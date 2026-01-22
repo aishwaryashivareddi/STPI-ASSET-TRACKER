@@ -165,11 +165,6 @@ export const updateAsset = catchAsync(async (req, res) => {
 export const confirmTesting = catchAsync(async (req, res) => {
   const { testing_status, remarks } = req.body;
 
-  // Only Admin and Manager can confirm testing
-  if (!['Admin', 'Manager'].includes(req.user.role)) {
-    throw new AppError('Only Admin or Manager can confirm testing', 403);
-  }
-
   const asset = await Asset.findByPk(req.params.id);
 
   if (!asset) {
@@ -191,10 +186,6 @@ export const confirmTesting = catchAsync(async (req, res) => {
 
 // Delete asset (Admin only)
 export const deleteAsset = catchAsync(async (req, res) => {
-  if (req.user.role !== 'Admin') {
-    throw new AppError('Only Admin can delete assets', 403);
-  }
-
   const asset = await Asset.findByPk(req.params.id);
 
   if (!asset) {

@@ -41,7 +41,8 @@ export const maintenances = {
   getAll: (params) => api.get('/maintenances', { params }),
   create: (formData) => api.post('/maintenances', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
   complete: (id, formData) => api.post(`/maintenances/${id}/complete`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
-  getStats: () => api.get('/maintenances/stats')
+  getStats: () => api.get('/maintenances/stats'),
+  delete: (id) => api.delete(`/maintenances/${id}`)
 };
 
 export const disposals = {

@@ -121,10 +121,6 @@ export const completeMaintenance = catchAsync(async (req, res) => {
 
 // Delete maintenance record
 export const deleteMaintenance = catchAsync(async (req, res) => {
-  if (req.user.role !== 'Admin') {
-    throw new AppError('Only Admin can delete maintenance records', 403);
-  }
-
   const maintenance = await Maintenance.findByPk(req.params.id);
 
   if (!maintenance) {

@@ -8,6 +8,7 @@ export default function Maintenances() {
   const [list, setList] = useState([]);
   const [assetList, setAssetList] = useState([]);
   const [showForm, setShowForm] = useState(false);
+  const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -27,6 +28,7 @@ export default function Maintenances() {
       navigate('/');
       return;
     }
+    setUser(userData);
   }, [navigate]);
 
   useEffect(() => {
@@ -81,6 +83,21 @@ export default function Maintenances() {
       alert('Failed to complete: ' + (err.response?.data?.message || err.message));
     }
   };
+
+  const handleDelete = async (item) => {
+    if (!window.confirm(`Are you sure you want to delete maintenance "${item.maintenance_id}"?`)) {
+      return;
+    }
+
+    try {
+      await maintenances.delete(item.id);
+      loadData();
+    } catch (err) {
+      alert('Failed to delete maintenance: ' + (err.response?.data?.message || err.message));
+    }
+  };
+
+  const canDelete = user?.role === 'Admin';
 
   return (
     <div className="page">
@@ -141,7 +158,10 @@ export default function Maintenances() {
                 <td><span className={`badge ${item.status.toLowerCase().replace(' ', '-')}`}>{item.status}</span></td>
                 <td>
                   {item.status !== 'Completed' && (
-                    <button onClick={() => handleComplete(item.id)} className="btn-sm">Complete</button>
+                    <button onClick={() => handleComplete(item.id)} className="btn-sm" style={{ marginRight: '8px' }}>Complete</button>
+                  )}
+                  {canDelete && (
+                    <button onClick={() => handleDelete(item)} className="btn-sm btn-danger">Delete</button>
                   )}
                 </td>
               </tr>

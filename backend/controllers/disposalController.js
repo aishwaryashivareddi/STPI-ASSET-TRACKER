@@ -100,10 +100,6 @@ export const getDisposalById = catchAsync(async (req, res) => {
 });
 
 export const approveDisposal = catchAsync(async (req, res) => {
-  if (req.user.role !== 'Admin') {
-    throw new AppError('Only Admin can approve disposals', 403);
-  }
-
   const { status } = req.body;
 
   const disposal = await Disposal.findByPk(req.params.id, {
@@ -145,10 +141,6 @@ export const updateDisposal = catchAsync(async (req, res) => {
 });
 
 export const deleteDisposal = catchAsync(async (req, res) => {
-  if (req.user.role !== 'Admin') {
-    throw new AppError('Only Admin can delete disposals', 403);
-  }
-
   const disposal = await Disposal.findByPk(req.params.id);
 
   if (!disposal) {

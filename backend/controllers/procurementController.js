@@ -68,10 +68,6 @@ export const getAllProcurements = catchAsync(async (req, res) => {
 
 
 export const approveProcurement = catchAsync(async (req, res) => {
-  if (!['Admin', 'Manager'].includes(req.user.role)) {
-    throw new AppError('Only Admin or Manager can approve procurements', 403);
-  }
-
   const { approval_status } = req.body;
 
   const procurement = await Procurement.findByPk(req.params.id);
@@ -108,10 +104,6 @@ export const updateProcurement = catchAsync(async (req, res) => {
 
 // Delete procurement
 export const deleteProcurement = catchAsync(async (req, res) => {
-  if (req.user.role !== 'Admin') {
-    throw new AppError('Only Admin can delete procurements', 403);
-  }
-
   const procurement = await Procurement.findByPk(req.params.id);
 
   if (!procurement) {
