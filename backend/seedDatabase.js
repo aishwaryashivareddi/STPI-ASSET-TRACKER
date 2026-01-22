@@ -134,30 +134,44 @@ async function seedDatabase() {
         'DAMAGED': 'Not Working'
       };
 
-      // Helper function to parse dates
+      // Helper function to parse dates - FIXED for Node v22
       const parseDate = (dateStr) => {
-        if (!dateStr || typeof dateStr !== 'string') {
+        try {
+          if (!dateStr || typeof dateStr !== 'string') {
+            return null;
+          }
+          
+          const normalized = String(dateStr).trim();
+          
+          if (['NA', 'Nil', 'Not available', 'N/A', '-', ''].includes(normalized)) {
+            return null;
+          }
+          
+          if (/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
+            return normalized;
+          }
+          
+          const dateMatch = normalized.match(/(\d{2})[-\/](\d{2})[-\/](\d{4})/);
+          if (dateMatch) {
+            const [, day, month, year] = dateMatch;
+            const parsedDay = parseInt(day, 10);
+            const parsedMonth = parseInt(month, 10);
+            const parsedYear = parseInt(year, 10);
+            
+            // Validate date ranges
+            if (parsedDay < 1 || parsedDay > 31 || parsedMonth < 1 || parsedMonth > 12) {
+              return null;
+            }
+            
+            return `${parsedYear}-${String(parsedMonth).padStart(2, '0')}-${String(parsedDay).padStart(2, '0')}`;
+          }
+          
+          if (/^\d{4}$/.test(normalized)) {
+            return `${normalized}-01-01`;
+          }
+        } catch (error) {
+          console.log(`Date parse error for: ${dateStr}`);
           return null;
-        }
-        
-        const normalized = dateStr.trim();
-        
-        if (['NA', 'Nil', 'Not available', 'N/A', '-', ''].includes(normalized)) {
-          return null;
-        }
-        
-        if (/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
-          return normalized;
-        }
-        
-        const dateMatch = normalized.match(/(\d{2})[-\/](\d{2})[-\/](\d{4})/);
-        if (dateMatch) {
-          const [, day, month, year] = dateMatch;
-          return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-        }
-        
-        if (/^\d{4}$/.test(normalized)) {
-          return `${normalized}-01-01`;
         }
         
         return null;

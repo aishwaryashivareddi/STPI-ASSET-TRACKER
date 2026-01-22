@@ -15,7 +15,7 @@ export const createProcurement = catchAsync(async (req, res) => {
     created_by: req.user.id
   });
 
-  res.status(201).json(ApiResponse.success(procurement, 'Procurement request created'));
+  ApiResponse.created(res, procurement, 'Procurement request created');
 });
 
 

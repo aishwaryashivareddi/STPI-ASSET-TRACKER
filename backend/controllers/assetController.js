@@ -16,8 +16,16 @@ export const createAsset = catchAsync(async (req, res) => {
   // Get uploaded file paths
   const filePaths = getFilePaths(req);
   
+  // Convert empty strings to null for optional fields
+  const cleanedData = { ...req.body };
+  ['supplier_id', 'location', 'po_number', 'purchase_value'].forEach(field => {
+    if (cleanedData[field] === '' || cleanedData[field] === undefined) {
+      cleanedData[field] = null;
+    }
+  });
+  
   const asset = await Asset.create({
-    ...req.body,
+    ...cleanedData,
     asset_id,
     ...filePaths,
     created_by: req.user.id
@@ -31,7 +39,11 @@ export const createAsset = catchAsync(async (req, res) => {
     ]
   });
 
-  res.status(201).json(ApiResponse.success(assetWithDetails, 'Asset created successfully'));
+  res.status(201).json({
+    success: true,
+    message: 'Asset created successfully',
+    data: assetWithDetails
+  });
 });
 
 // Get all assets with filters
@@ -92,7 +104,7 @@ export const getAllAssets = catchAsync(async (req, res) => {
       limit: parseInt(limit),
       totalPages: Math.ceil(count / limit)
     }
-  });
+  }, 'Assets retrieved successfully');
 });
 
 // Get single asset
@@ -115,7 +127,7 @@ export const getAssetById = catchAsync(async (req, res) => {
     throw new AppError('Access denied', 403);
   }
 
-  ApiResponse.success(res, asset);
+  ApiResponse.success(res, asset, 'Asset retrieved successfully');
 });
 
 // Update asset
@@ -232,7 +244,7 @@ export const getAssetStats = catchAsync(async (req, res) => {
     obsoleteAssets,
     pendingTesting,
     byType
-  });
+  }, 'Statistics retrieved successfully');
 });
 
 // Bulk import assets
@@ -255,8 +267,9 @@ export const bulkImportAssets = catchAsync(async (req, res) => {
     createdAssets.push(asset);
   }
 
-  res.status(201).json(ApiResponse.success(
-    { count: createdAssets.length, assets: createdAssets },
-    `${createdAssets.length} assets imported successfully`
-  ));
+  res.status(201).json({
+    success: true,
+    message: `${createdAssets.length} assets imported successfully`,
+    data: { count: createdAssets.length, assets: createdAssets }
+  });
 });

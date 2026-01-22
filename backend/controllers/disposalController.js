@@ -25,7 +25,7 @@ export const createDisposal = catchAsync(async (req, res) => {
     ...filePaths
   });
 
-  res.status(201).json(ApiResponse.success(disposal, 'Disposal request created'));
+  ApiResponse.created(res, disposal, 'Disposal request created');
 });
 
 export const getAllDisposals = catchAsync(async (req, res) => {
@@ -81,7 +81,7 @@ export const getDisposalById = catchAsync(async (req, res) => {
     throw new AppError('Disposal not found', 404);
   }
 
-  ApiResponse.success(res, disposal);
+  ApiResponse.success(res, disposal, 'Disposal retrieved successfully');
 });
 
 export const approveDisposal = catchAsync(async (req, res) => {

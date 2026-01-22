@@ -24,7 +24,7 @@ export const createMaintenance = catchAsync(async (req, res) => {
     performed_by: req.user.id
   });
 
-  res.status(201).json(ApiResponse.success(maintenance, 'Maintenance record created'));
+  ApiResponse.created(res, maintenance, 'Maintenance record created');
 });
 
 // Get all maintenance records
