@@ -534,6 +534,16 @@ tbody tr:last-child {
   background: #c53030;
 }
 
+.btn-danger {
+  background: #e53e3e;
+  box-shadow: 0 2px 8px rgba(229, 62, 62, 0.3);
+}
+
+.btn-danger:hover {
+  background: #c53030;
+  box-shadow: 0 4px 12px rgba(229, 62, 62, 0.4);
+}
+
 /* Modal */
 .modal {
   position: fixed;

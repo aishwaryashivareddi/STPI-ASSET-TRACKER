@@ -33,7 +33,8 @@ export const assets = {
 export const procurements = {
   getAll: (params) => api.get('/procurements', { params }),
   create: (data) => api.post('/procurements', data),
-  approve: (id, status) => api.post(`/procurements/${id}/approve`, { approval_status: status })
+  approve: (id, status) => api.post(`/procurements/${id}/approve`, { approval_status: status }),
+  delete: (id) => api.delete(`/procurements/${id}`)
 };
 
 export const maintenances = {
@@ -46,13 +47,15 @@ export const maintenances = {
 export const disposals = {
   getAll: (params) => api.get('/disposals', { params }),
   create: (formData) => api.post('/disposals', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
-  approve: (id, status) => api.post(`/disposals/${id}/approve`, { status })
+  approve: (id, status) => api.post(`/disposals/${id}/approve`, { status }),
+  delete: (id) => api.delete(`/disposals/${id}`)
 };
 
 export const master = {
   getBranches: () => api.get('/master/branches'),
   getSuppliers: () => api.get('/master/suppliers'),
-  createBranch: (data) => api.post('/master/branches', data)
+  createBranch: (data) => api.post('/master/branches', data),
+  createSupplier: (data) => api.post('/master/suppliers', data)
 };
 
 export default api;

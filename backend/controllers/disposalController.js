@@ -16,6 +16,21 @@ export const createDisposal = catchAsync(async (req, res) => {
   const asset = await Asset.findByPk(asset_id);
   if (!asset) throw new AppError('Asset not found', 404);
 
+  if (asset.current_status === 'Disposed') {
+    throw new AppError('Asset is already disposed', 400);
+  }
+
+  const existingDisposal = await Disposal.findOne({
+    where: {
+      asset_id,
+      status: { [Op.in]: ['Pending', 'Approved'] }
+    }
+  });
+
+  if (existingDisposal) {
+    throw new AppError('Asset already has a pending or approved disposal request', 400);
+  }
+
   const disposal_id = await generateDisposalId(asset.branch_id);
   const filePaths = getFilePaths(req);
 

@@ -31,9 +31,15 @@ export const authenticate = catchAsync(async (req, res, next) => {
 
 export const authorize = (...roles) => {
   return (req, res, next) => {
+    console.log('Authorization check - User role:', req.user?.role);
+    console.log('Required roles:', roles);
+    console.log('User object:', req.user);
+    
     if (!roles.includes(req.user.role)) {
+      console.log('Authorization failed - role not in allowed roles');
       return next(new AppError('You do not have permission to perform this action', 403));
     }
+    console.log('Authorization passed');
     next();
   };
 };

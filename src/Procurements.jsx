@@ -78,7 +78,21 @@ export default function Procurements() {
     }
   };
 
+  const handleDelete = async (item) => {
+    if (!window.confirm(`Are you sure you want to delete procurement "${item.procurement_id}"?`)) {
+      return;
+    }
+
+    try {
+      await procurements.delete(item.id);
+      loadData();
+    } catch (err) {
+      alert('Failed to delete procurement: ' + (err.response?.data?.message || err.message));
+    }
+  };
+
   const canApprove = user?.role === 'Admin' || user?.role === 'Manager';
+  const canDelete = user?.role === 'Admin';
 
   return (
     <div className="page">
@@ -136,9 +150,12 @@ export default function Procurements() {
                 <td>
                   {canApprove && item.approval_status === 'Pending' && (
                     <>
-                      <button onClick={() => handleApprove(item.id, 'Approved')} className="btn-sm success">Approve</button>
-                      <button onClick={() => handleApprove(item.id, 'Rejected')} className="btn-sm danger">Reject</button>
+                      <button onClick={() => handleApprove(item.id, 'Approved')} className="btn-sm success" style={{ marginRight: '8px' }}>Approve</button>
+                      <button onClick={() => handleApprove(item.id, 'Rejected')} className="btn-sm danger" style={{ marginRight: '8px' }}>Reject</button>
                     </>
+                  )}
+                  {canDelete && (
+                    <button onClick={() => handleDelete(item)} className="btn-sm btn-danger">Delete</button>
                   )}
                 </td>
               </tr>

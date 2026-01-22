@@ -63,7 +63,7 @@ export const getAllProcurements = catchAsync(async (req, res) => {
       limit: parseInt(limit),
       totalPages: Math.ceil(count / limit)
     }
-  });
+  }, 'Procurements retrieved successfully');
 });
 
 

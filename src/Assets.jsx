@@ -11,6 +11,7 @@ export default function Assets() {
   const [showForm, setShowForm] = useState(false);
   const [showTestingForm, setShowTestingForm] = useState(null);
   const [showBranchForm, setShowBranchForm] = useState(false);
+  const [showSupplierForm, setShowSupplierForm] = useState(false);
   const [editingAsset, setEditingAsset] = useState(null);
   const [loading, setLoading] = useState(false);
   const [filters, setFilters] = useState({ asset_type: '', current_status: '' });
@@ -30,6 +31,7 @@ export default function Assets() {
   const [files, setFiles] = useState({});
 
   const [newBranch, setNewBranch] = useState({ name: '', code: '', address: '' });
+  const [newSupplier, setNewSupplier] = useState({ name: '', contact_person: '', email: '', phone: '', address: '' });
 
   useEffect(() => {
     const userData = JSON.parse(localStorage.getItem('user'));
@@ -123,6 +125,20 @@ export default function Assets() {
     }
   };
 
+  const handleAddSupplier = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await master.createSupplier(newSupplier);
+      const supplierRes = await master.getSuppliers();
+      setSuppliers(supplierRes.data.data);
+      setFormData({ ...formData, supplier_id: res.data.data.id });
+      setShowSupplierForm(false);
+      setNewSupplier({ name: '', contact_person: '', email: '', phone: '', address: '' });
+    } catch (err) {
+      alert('Failed to create supplier: ' + (err.response?.data?.message || err.message));
+    }
+  };
+
   const handleTestingSubmit = async (e, assetId) => {
     e.preventDefault();
     const data = new FormData();
@@ -133,15 +149,43 @@ export default function Assets() {
     }
 
     try {
+      console.log('User role:', user?.role);
+      console.log('Asset ID:', assetId);
       await assets.confirmTesting(assetId, data);
       setShowTestingForm(null);
       loadData();
     } catch (err) {
+      console.error('Testing error:', err.response?.data);
       alert('Failed to confirm testing: ' + (err.response?.data?.message || err.message));
     }
   };
 
+  const handleDelete = async (asset) => {
+    if (!window.confirm(`Are you sure you want to delete asset "${asset.name}" (${asset.asset_id})?`)) {
+      return;
+    }
+
+    try {
+      await assets.delete(asset.id);
+      loadData();
+    } catch (err) {
+      alert('Failed to delete asset: ' + (err.response?.data?.message || err.message));
+    }
+  };
+
   const canConfirmTesting = user?.role === 'Admin' || user?.role === 'Manager';
+  const canDelete = user?.role === 'Admin';
+  const canCreateBranch = user?.role === 'Admin';
+  const canCreateSupplier = user?.role === 'Admin' || user?.role === 'Manager';
+  
+  // Debug user data
+  useEffect(() => {
+    if (user) {
+      console.log('Current user:', user);
+      console.log('User role:', user.role);
+      console.log('Can confirm testing:', canConfirmTesting);
+    }
+  }, [user, canConfirmTesting]);
 
   return (
     <div className="page">
@@ -222,7 +266,10 @@ export default function Assets() {
                 <td>
                   <button onClick={() => handleEdit(asset)} className="btn-sm" style={{ marginRight: '8px' }}>Edit</button>
                   {canConfirmTesting && asset.testing_status === 'Pending' && (
-                    <button onClick={() => setShowTestingForm(asset.id)} className="btn-sm">Test</button>
+                    <button onClick={() => setShowTestingForm(asset.id)} className="btn-sm" style={{ marginRight: '8px' }}>Test</button>
+                  )}
+                  {canDelete && (
+                    <button onClick={() => handleDelete(asset)} className="btn-sm btn-danger">Delete</button>
                   )}
                 </td>
               </tr>
@@ -275,7 +322,9 @@ export default function Assets() {
                   >
                     <option value="">Select Branch</option>
                     {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-                    <option value="ADD_NEW" style={{ fontWeight: 'bold', color: '#38a169' }}>+ Add New Branch</option>
+                    {canCreateBranch && (
+                      <option value="ADD_NEW" style={{ fontWeight: 'bold', color: '#38a169' }}>+ Add New Branch</option>
+                    )}
                   </select>
                 </div>
                 <div className="form-group">
@@ -300,9 +349,21 @@ export default function Assets() {
                 </div>
                 <div className="form-group">
                   <label>Supplier</label>
-                  <select value={formData.supplier_id} onChange={(e) => setFormData({ ...formData, supplier_id: e.target.value })}>
+                  <select 
+                    value={formData.supplier_id} 
+                    onChange={(e) => {
+                      if (e.target.value === 'ADD_NEW') {
+                        setShowSupplierForm(true);
+                      } else {
+                        setFormData({ ...formData, supplier_id: e.target.value });
+                      }
+                    }}
+                  >
                     <option value="">Select Supplier</option>
                     {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                    {canCreateSupplier && (
+                      <option value="ADD_NEW" style={{ fontWeight: 'bold', color: '#38a169' }}>+ Add New Supplier</option>
+                    )}
                   </select>
                 </div>
               </div>
@@ -381,6 +442,40 @@ export default function Assets() {
               <div className="form-actions">
                 <button type="button" onClick={() => setShowBranchForm(false)}>Cancel</button>
                 <button type="submit" className="btn-primary">Add Branch</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showSupplierForm && (
+        <div className="modal">
+          <div className="modal-content small">
+            <h2>Add New Supplier</h2>
+            <form onSubmit={handleAddSupplier}>
+              <div className="form-group">
+                <label>Supplier Name *</label>
+                <input value={newSupplier.name} onChange={(e) => setNewSupplier({ ...newSupplier, name: e.target.value })} placeholder="e.g., ABC Technologies" required />
+              </div>
+              <div className="form-group">
+                <label>Contact Person *</label>
+                <input value={newSupplier.contact_person} onChange={(e) => setNewSupplier({ ...newSupplier, contact_person: e.target.value })} placeholder="e.g., John Doe" required />
+              </div>
+              <div className="form-group">
+                <label>Email</label>
+                <input type="email" value={newSupplier.email} onChange={(e) => setNewSupplier({ ...newSupplier, email: e.target.value })} placeholder="contact@supplier.com" />
+              </div>
+              <div className="form-group">
+                <label>Phone</label>
+                <input value={newSupplier.phone} onChange={(e) => setNewSupplier({ ...newSupplier, phone: e.target.value })} placeholder="+91 9876543210" />
+              </div>
+              <div className="form-group">
+                <label>Address</label>
+                <textarea value={newSupplier.address} onChange={(e) => setNewSupplier({ ...newSupplier, address: e.target.value })} rows="3" placeholder="Enter supplier address"></textarea>
+              </div>
+              <div className="form-actions">
+                <button type="button" onClick={() => setShowSupplierForm(false)}>Cancel</button>
+                <button type="submit" className="btn-primary">Add Supplier</button>
               </div>
             </form>
           </div>

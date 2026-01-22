@@ -71,7 +71,7 @@ export const getAllMaintenances = catchAsync(async (req, res) => {
       limit: parseInt(limit),
       totalPages: Math.ceil(count / limit)
     }
-  });
+  }, 'Maintenances retrieved successfully');
 });
 
 // Update maintenance record
@@ -158,5 +158,5 @@ export const getMaintenanceStats = catchAsync(async (req, res) => {
     inProgress,
     completed,
     totalCost: totalCost || 0
-  });
+  }, 'Maintenance statistics retrieved successfully');
 });
