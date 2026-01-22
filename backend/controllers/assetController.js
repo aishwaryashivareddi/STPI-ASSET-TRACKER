@@ -165,14 +165,8 @@ export const updateAsset = catchAsync(async (req, res) => {
 export const confirmTesting = catchAsync(async (req, res) => {
   const { testing_status, remarks } = req.body;
 
-  // Debug logging
-  console.log('confirmTesting called by user:', req.user);
-  console.log('User role:', req.user?.role);
-  console.log('Asset ID:', req.params.id);
-
   // Only Admin and Manager can confirm testing
   if (!['Admin', 'Manager'].includes(req.user.role)) {
-    console.log('Permission denied for role:', req.user.role);
     throw new AppError('Only Admin or Manager can confirm testing', 403);
   }
 

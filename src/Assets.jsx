@@ -149,13 +149,10 @@ export default function Assets() {
     }
 
     try {
-      console.log('User role:', user?.role);
-      console.log('Asset ID:', assetId);
       await assets.confirmTesting(assetId, data);
       setShowTestingForm(null);
       loadData();
     } catch (err) {
-      console.error('Testing error:', err.response?.data);
       alert('Failed to confirm testing: ' + (err.response?.data?.message || err.message));
     }
   };
@@ -177,15 +174,6 @@ export default function Assets() {
   const canDelete = user?.role === 'Admin';
   const canCreateBranch = user?.role === 'Admin';
   const canCreateSupplier = user?.role === 'Admin' || user?.role === 'Manager';
-  
-  // Debug user data
-  useEffect(() => {
-    if (user) {
-      console.log('Current user:', user);
-      console.log('User role:', user.role);
-      console.log('Can confirm testing:', canConfirmTesting);
-    }
-  }, [user, canConfirmTesting]);
 
   return (
     <div className="page">
