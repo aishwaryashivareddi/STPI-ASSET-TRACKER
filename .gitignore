@@ -27,7 +27,9 @@ dist-ssr
 .env
 backend/.env
 
-# Uploads (optional - include if you want to exclude uploaded files)
+# Uploads
+uploads/*
+!uploads/.gitkeep
 backend/uploads/*
 !backend/uploads/.gitkeep
 

@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { disposals, assets } from './api';
 import { validateFile } from './utils/fileValidation';
 import Pagination from './components/Pagination';
+import { useToast } from './components/Toast';
+import SearchableSelect from './components/SearchableSelect';
 
 export default function Disposals() {
   const [list, setList] = useState([]);
@@ -16,6 +18,7 @@ export default function Disposals() {
   const [sortOrder, setSortOrder] = useState('DESC');
   const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, totalPages: 1 });
   const navigate = useNavigate();
+  const toast = useToast();
 
   const [formData, setFormData] = useState({
     asset_id: '', disposal_date: '', disposal_method: 'Auction',
@@ -47,7 +50,7 @@ export default function Disposals() {
     try {
       const [dispRes, assetRes] = await Promise.all([
         disposals.getAll({ search: debouncedSearch, sortBy, sortOrder, page: pagination.page, limit: pagination.limit }),
-        assets.getAll()
+        assets.getAll({ limit: 9999 })
       ]);
       setList(dispRes.data.data.disposals);
       setPagination(dispRes.data.data.pagination);
@@ -68,6 +71,7 @@ export default function Disposals() {
       await disposals.create(data);
       setShowForm(false);
       setFormData({ asset_id: '', disposal_date: '', disposal_method: 'Auction', disposal_value: '', reason: '' });
+      toast('Disposal request created');
       loadData();
     } catch (err) {
       alert('Failed to create disposal: ' + (err.response?.data?.message || err.message));
@@ -77,6 +81,7 @@ export default function Disposals() {
   const handleApprove = async (id, status) => {
     try {
       await disposals.approve(id, status);
+      toast(`Disposal ${status.toLowerCase()}`);
       loadData();
     } catch (err) {
       alert('Failed to approve: ' + (err.response?.data?.message || err.message));
@@ -90,6 +95,7 @@ export default function Disposals() {
 
     try {
       await disposals.delete(item.id);
+      toast('Disposal deleted');
       loadData();
     } catch (err) {
       alert('Failed to delete disposal: ' + (err.response?.data?.message || err.message));
@@ -148,7 +154,9 @@ export default function Disposals() {
             </tr>
           </thead>
           <tbody>
-            {list.map((item) => (
+            {list.length === 0 ? (
+              <tr><td colSpan="7" style={{ textAlign: 'center', padding: '40px', color: '#718096' }}>No disposal requests found</td></tr>
+            ) : list.map((item) => (
               <tr key={item.id}>
                 <td>{item.disposal_id}</td>
                 <td>{item.asset?.name}</td>
@@ -186,10 +194,13 @@ export default function Disposals() {
             <form onSubmit={handleSubmit}>
               <div className="form-group">
                 <label>Asset *</label>
-                <select value={formData.asset_id} onChange={(e) => setFormData({ ...formData, asset_id: e.target.value })} required>
-                  <option value="">Select Asset</option>
-                  {assetList.map(a => <option key={a.id} value={a.id}>{a.asset_id} - {a.name}</option>)}
-                </select>
+                <SearchableSelect
+                  options={assetList.map(a => ({ value: a.id, label: `${a.asset_id} - ${a.name}` }))}
+                  value={formData.asset_id}
+                  onChange={(v) => setFormData({ ...formData, asset_id: v })}
+                  placeholder="Select Asset"
+                  required
+                />
               </div>
               <div className="form-group">
                 <label>Disposal Date *</label>

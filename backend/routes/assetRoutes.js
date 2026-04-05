@@ -173,6 +173,17 @@ router.post('/:id/testing',
   assetController.confirmTesting
 );
 
+// Delete a specific file from an asset
+router.delete('/:id/file/:fileField', 
+  authorize(['Admin', 'Manager']), 
+  assetController.deleteAssetFile
+);
+
+// Download a specific file
+router.get('/:id/file/:fileField/download', 
+  assetController.downloadAssetFile
+);
+
 
 router.post('/bulk/import', 
   authorize(['Admin']), 

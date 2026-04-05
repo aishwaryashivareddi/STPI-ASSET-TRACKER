@@ -12,10 +12,21 @@ Complete asset tracking system with React frontend and Node.js backend.
 ✅ **RBAC** - Admin, Manager, User roles  
 ✅ **Multi-Branch** - Support for multiple locations  
 ✅ **394 Assets** - Pre-imported from Excel data  
-✅ **React UI** - Modern responsive interface  
-✅ **Forgot Password** - Secure password reset with token expiration
+✅ **Gateway Pass** - 3-level approval for inter-branch asset transfers  
+✅ **User Management** - Admin can create/edit/deactivate users  
+✅ **Forgot Password** - Secure password reset with token expiration  
+✅ **Toast Notifications** - Success/error feedback on all actions  
+✅ **Searchable Dropdowns** - Type-to-search on all select fields  
+✅ **File Preview/Download/Delete** - Inline PDF/image preview  
+✅ **Protected Routes** - Frontend route guards  
+✅ **Session Expiry** - Auto-redirect on JWT expiration
 
 ## Quick Start
+
+### Prerequisites
+- Node.js 18+
+- MySQL 8.0+
+- npm
 
 ### Backend Setup
 ```bash
@@ -24,13 +35,14 @@ npm install
 
 # Configure database
 cp .env.example .env
-# Edit .env with your MySQL credentials
+# Edit .env with your MySQL credentials (DB_HOST, DB_USER, DB_PASSWORD, DB_PORT)
 
-# Seed database (creates tables + imports 394 assets)
+# Seed database (creates tables + imports assets)
 npm run seed
 
-# Run forgot password migration (adds reset token fields)
+# Run migrations
 node migrateResetToken.js
+node migrateGatewayPass.js
 
 # Start backend server
 npm run dev
@@ -101,6 +113,18 @@ User (Hyderabad):
 - Track disposal status
 - Multiple disposal methods (Auction, Scrap, Donation, e-Waste)
 
+### Gateway Pass Module (Asset Transfer)
+- Create transfer requests between branches
+- 3-level approval: Manager → Admin → Receiver
+- Asset branch auto-updated on completion
+- Visual approval progress tracker (L1/L2/L3)
+
+### User Management (Admin only)
+- Create/Edit/Delete users
+- Assign roles and branches
+- Reset user passwords
+- Activate/Deactivate users
+
 ## Asset ID Format
 
 Auto-generated: `[BRANCHCODE][DD/MM/YY][ASSETTYPE+SEQ]`
@@ -149,6 +173,25 @@ POST   /api/disposals              - Create request
 POST   /api/disposals/:id/approve  - Approve (Admin only)
 ```
 
+### Gateway Pass
+```
+GET    /api/gateway-passes                    - List gateway passes
+POST   /api/gateway-passes                    - Create transfer request
+POST   /api/gateway-passes/:id/manager-approve - Manager approval (L1)
+POST   /api/gateway-passes/:id/admin-approve   - Admin approval (L2)
+POST   /api/gateway-passes/:id/receive         - Receiver confirmation (L3)
+DELETE /api/gateway-passes/:id                 - Delete (Admin only)
+```
+
+### Users (Admin only)
+```
+GET    /api/users                - List all users
+POST   /api/users                - Create user
+PUT    /api/users/:id            - Update user
+POST   /api/users/:id/reset-password - Reset password
+DELETE /api/users/:id            - Delete user
+```
+
 ## RBAC Matrix
 
 | Action | Admin | Manager | User |
@@ -158,7 +201,11 @@ POST   /api/disposals/:id/approve  - Approve (Admin only)
 | Confirm Testing | ✅ | ✅ | ❌ |
 | Approve Procurement | ✅ | ✅ | ❌ |
 | Approve Disposal | ✅ | ❌ | ❌ |
-| Delete | ✅ | ❌ | ❌ |
+| Delete (any) | ✅ | ❌ | ❌ |
+| Gateway Pass L1 | ✅ | ✅ | ❌ |
+| Gateway Pass L2 | ✅ | ❌ | ❌ |
+| Gateway Pass L3 (Receive) | ✅ | ✅ | ✅ |
+| User Management | ✅ | ❌ | ❌ |
 
 ## Technology Stack
 
@@ -183,6 +230,7 @@ POST   /api/disposals/:id/approve  - Approve (Admin only)
 - `procurements` - Procurement workflow
 - `maintenances` - Maintenance records
 - `disposals` - Disposal management
+- `gateway_passes` - Inter-branch asset transfers
 - `branches` - Multi-branch support
 - `suppliers` - Vendor management
 - `users` - Authentication & RBAC
@@ -452,7 +500,7 @@ Check:
 
 ## Roadmap
 
-- [ ] Asset transfer between branches
+- [x] Asset transfer between branches (Gateway Pass)
 - [ ] Advanced reporting and analytics
 - [ ] Email notifications
 - [ ] Mobile app (React Native)
@@ -481,6 +529,6 @@ Proprietary - STPI
 
 ---
 
-**Version:** 1.0.0  
-**Last Updated:** January 2025  
+**Version:** 2.0.0  
+**Last Updated:** April 2026  
 **Maintained by:** STPI Development Team

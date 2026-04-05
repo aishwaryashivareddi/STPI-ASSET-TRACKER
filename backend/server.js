@@ -1,3 +1,5 @@
+import path from 'path';
+import { fileURLToPath } from 'url';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -13,12 +15,16 @@ import assetRoutes from './routes/assetRoutes.js';
 import procurementRoutes from './routes/procurementRoutes.js';
 import maintenanceRoutes from './routes/maintenanceRoutes.js';
 import disposalRoutes from './routes/disposalRoutes.js';
+import gatewayPassRoutes from './routes/gatewayPassRoutes.js';
+import userRoutes from './routes/userRoutes.js';
 import masterRoutes from './routes/masterRoutes.js';
 import errorHandler from './middleware/errorHandler.js';
 import AppError from './utils/AppError.js';
 import logger from './config/logger.js';
+import { validateEnv } from './utils/validateEnv.js';
 
 dotenv.config();
+validateEnv();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -69,8 +75,13 @@ app.use('/api/assets', assetRoutes);
 app.use('/api/procurements', procurementRoutes);
 app.use('/api/maintenances', maintenanceRoutes);
 app.use('/api/disposals', disposalRoutes);
+app.use('/api/gateway-passes', gatewayPassRoutes);
+app.use('/api/users', userRoutes);
 app.use('/api/master', masterRoutes);
-app.use('/uploads', express.static('uploads'));
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 
 app.all('*', (req, res, next) => {
   next(new AppError(`Can't find ${req.originalUrl} on this server!`, 404));

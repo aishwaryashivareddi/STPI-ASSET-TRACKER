@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { procurements, master } from './api';
 import Pagination from './components/Pagination';
+import { useToast } from './components/Toast';
 
 export default function Procurements() {
   const [list, setList] = useState([]);
@@ -15,6 +16,7 @@ export default function Procurements() {
   const [sortOrder, setSortOrder] = useState('DESC');
   const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, totalPages: 1 });
   const navigate = useNavigate();
+  const toast = useToast();
 
   const [formData, setFormData] = useState({
     branch_id: '', requisition_date: '', budget_allocated: ''
@@ -63,6 +65,7 @@ export default function Procurements() {
       await procurements.create(formData);
       setShowForm(false);
       setFormData({ branch_id: '', requisition_date: '', budget_allocated: '' });
+      toast('Procurement request created');
       loadData();
     } catch (err) {
       alert('Failed to create procurement: ' + (err.response?.data?.message || err.message));
@@ -72,6 +75,7 @@ export default function Procurements() {
   const handleApprove = async (id, status) => {
     try {
       await procurements.approve(id, status);
+      toast(`Procurement ${status.toLowerCase()}`);
       loadData();
     } catch (err) {
       alert('Failed to approve: ' + (err.response?.data?.message || err.message));
@@ -85,6 +89,7 @@ export default function Procurements() {
 
     try {
       await procurements.delete(item.id);
+      toast('Procurement deleted');
       loadData();
     } catch (err) {
       alert('Failed to delete procurement: ' + (err.response?.data?.message || err.message));
@@ -140,7 +145,9 @@ export default function Procurements() {
             </tr>
           </thead>
           <tbody>
-            {list.map((item) => (
+            {list.length === 0 ? (
+              <tr><td colSpan="6" style={{ textAlign: 'center', padding: '40px', color: '#718096' }}>No procurement requests found</td></tr>
+            ) : list.map((item) => (
               <tr key={item.id}>
                 <td>{item.procurement_id}</td>
                 <td>{item.branch?.name}</td>

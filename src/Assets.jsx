@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { assets, master } from './api';
 import { validateFile } from './utils/fileValidation';
 import Pagination from './components/Pagination';
+import { useToast } from './components/Toast';
+import SearchableSelect from './components/SearchableSelect';
 
 export default function Assets() {
   const [assetList, setAssetList] = useState([]);
@@ -12,6 +14,7 @@ export default function Assets() {
   const [showTestingForm, setShowTestingForm] = useState(null);
   const [showBranchForm, setShowBranchForm] = useState(false);
   const [showSupplierForm, setShowSupplierForm] = useState(false);
+  const [showFilesModal, setShowFilesModal] = useState(null);
   const [editingAsset, setEditingAsset] = useState(null);
   const [loading, setLoading] = useState(false);
   const [filters, setFilters] = useState({ asset_type: '', current_status: '' });
@@ -22,6 +25,8 @@ export default function Assets() {
   const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, totalPages: 1 });
   const [user, setUser] = useState(null);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const toast = useToast();
 
   const [formData, setFormData] = useState({
     name: '', asset_type: 'COMPUTER', branch_id: '', quantity: 1,
@@ -56,8 +61,19 @@ export default function Assets() {
   const loadData = async () => {
     setLoading(true);
     try {
+      const statusParam = searchParams.get('status');
+      const typeParam = searchParams.get('type');
+      const testingParam = searchParams.get('testing');
+
+      const params = { search: debouncedSearch, sortBy, sortOrder, page: pagination.page, limit: pagination.limit };
+      if (statusParam) params.current_status = statusParam;
+      else if (filters.current_status) params.current_status = filters.current_status;
+      if (typeParam) params.asset_type = typeParam;
+      else if (filters.asset_type) params.asset_type = filters.asset_type;
+      if (testingParam) params.testing_status = testingParam;
+
       const [assetRes, branchRes, supplierRes] = await Promise.all([
-        assets.getAll({ ...filters, search: debouncedSearch, sortBy, sortOrder, page: pagination.page, limit: pagination.limit }),
+        assets.getAll(params),
         master.getBranches(),
         master.getSuppliers()
       ]);
@@ -83,8 +99,10 @@ export default function Assets() {
     try {
       if (editingAsset) {
         await assets.update(editingAsset.id, data);
+        toast('Asset updated successfully');
       } else {
         await assets.create(data);
+        toast('Asset created successfully');
       }
       setShowForm(false);
       setEditingAsset(null);
@@ -120,6 +138,7 @@ export default function Assets() {
       setFormData({ ...formData, branch_id: res.data.data.id });
       setShowBranchForm(false);
       setNewBranch({ name: '', code: '', address: '' });
+      toast('Branch created successfully');
     } catch (err) {
       alert('Failed to create branch: ' + (err.response?.data?.message || err.message));
     }
@@ -134,6 +153,7 @@ export default function Assets() {
       setFormData({ ...formData, supplier_id: res.data.data.id });
       setShowSupplierForm(false);
       setNewSupplier({ name: '', contact_person: '', email: '', phone: '', address: '' });
+      toast('Supplier created successfully');
     } catch (err) {
       alert('Failed to create supplier: ' + (err.response?.data?.message || err.message));
     }
@@ -151,6 +171,7 @@ export default function Assets() {
     try {
       await assets.confirmTesting(assetId, data);
       setShowTestingForm(null);
+      toast('Testing confirmed successfully');
       loadData();
     } catch (err) {
       alert('Failed to confirm testing: ' + (err.response?.data?.message || err.message));
@@ -164,11 +185,32 @@ export default function Assets() {
 
     try {
       await assets.delete(asset.id);
+      toast('Asset deleted successfully');
       loadData();
     } catch (err) {
       alert('Failed to delete asset: ' + (err.response?.data?.message || err.message));
     }
   };
+
+  const handleDeleteFile = async (assetId, fileField, label) => {
+    if (!window.confirm(`Delete ${label} file?`)) return;
+    try {
+      await assets.deleteFile(assetId, fileField);
+      toast(`${label} deleted`);
+      setShowFilesModal(prev => ({ ...prev, [fileField]: null }));
+      loadData();
+    } catch (err) {
+      alert('Failed to delete file: ' + (err.response?.data?.message || err.message));
+    }
+  };
+
+  const getFileUrl = (filePath) => {
+    const p = filePath.replace(/\\/g, '/');
+    const rel = p.includes('uploads/') ? p.substring(p.indexOf('uploads/')) : p;
+    return `http://localhost:5000/${rel}`;
+  };
+
+  const isImage = (filePath) => /\.(jpg|jpeg|png|gif)$/i.test(filePath);
 
   const canConfirmTesting = user?.role === 'Admin' || user?.role === 'Manager';
   const canDelete = user?.role === 'Admin';
@@ -195,7 +237,7 @@ export default function Assets() {
             onChange={(e) => { setSearch(e.target.value); setPagination({ ...pagination, page: 1 }); }}
           />
         </div>
-        <select value={filters.asset_type} onChange={(e) => { setFilters({ ...filters, asset_type: e.target.value }); setPagination({ ...pagination, page: 1 }); }}>
+        <select value={searchParams.get('type') || filters.asset_type} onChange={(e) => { setFilters({ ...filters, asset_type: e.target.value }); navigate('/assets'); setPagination({ ...pagination, page: 1 }); }}>
           <option value="">All Types</option>
           <option value="HSDC">HSDC</option>
           <option value="COMPUTER">Computer</option>
@@ -203,13 +245,17 @@ export default function Assets() {
           <option value="OFFICE">Office</option>
           <option value="FURNITURE">Furniture</option>
           <option value="FIREFIGHTING">Fire-Fighting</option>
+          <option value="BUILDING">Building</option>
         </select>
-        <select value={filters.current_status} onChange={(e) => { setFilters({ ...filters, current_status: e.target.value }); setPagination({ ...pagination, page: 1 }); }}>
+        <select value={searchParams.get('status') || filters.current_status} onChange={(e) => { setFilters({ ...filters, current_status: e.target.value }); navigate('/assets'); setPagination({ ...pagination, page: 1 }); }}>
           <option value="">All Status</option>
           <option value="Working">Working</option>
           <option value="Not Working">Not Working</option>
           <option value="Obsolete">Obsolete</option>
         </select>
+        {(filters.asset_type || filters.current_status || searchParams.get('testing')) && (
+          <button onClick={() => { setFilters({ asset_type: '', current_status: '' }); setSearch(''); navigate('/assets'); }} style={{ padding: '12px 20px', background: '#e53e3e', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}>✕ Clear Filters</button>
+        )}
       </div>
 
       <div className="table-container">
@@ -241,7 +287,9 @@ export default function Assets() {
             </tr>
           </thead>
           <tbody>
-            {assetList.map((asset) => (
+            {assetList.length === 0 ? (
+              <tr><td colSpan="9" style={{ textAlign: 'center', padding: '40px', color: '#718096' }}>No assets found</td></tr>
+            ) : assetList.map((asset) => (
               <tr key={asset.id}>
                 <td>{asset.asset_id}</td>
                 <td>{asset.name}</td>
@@ -252,6 +300,9 @@ export default function Assets() {
                 <td><span className={`badge ${asset.testing_status.toLowerCase()}`}>{asset.testing_status}</span></td>
                 <td>₹{asset.purchase_value?.toLocaleString()}</td>
                 <td>
+                  {(asset.invoice_file || asset.po_file || asset.dc_file || asset.testing_report_file) && (
+                    <button onClick={() => setShowFilesModal(asset)} className="btn-sm" style={{ marginRight: '8px', background: 'linear-gradient(135deg, #3182ce, #2b6cb0)' }}>📎 Files</button>
+                  )}
                   <button onClick={() => handleEdit(asset)} className="btn-sm" style={{ marginRight: '8px' }}>Edit</button>
                   {canConfirmTesting && asset.testing_status === 'Pending' && (
                     <button onClick={() => setShowTestingForm(asset.id)} className="btn-sm" style={{ marginRight: '8px' }}>Test</button>
@@ -291,29 +342,21 @@ export default function Assets() {
                     <option value="OFFICE">Office</option>
                     <option value="FURNITURE">Furniture</option>
                     <option value="FIREFIGHTING">Fire-Fighting</option>
+                    <option value="BUILDING">Building</option>
                   </select>
                 </div>
               </div>
               <div className="form-row">
                 <div className="form-group">
                   <label>Branch *</label>
-                  <select 
-                    value={formData.branch_id} 
-                    onChange={(e) => {
-                      if (e.target.value === 'ADD_NEW') {
-                        setShowBranchForm(true);
-                      } else {
-                        setFormData({ ...formData, branch_id: e.target.value });
-                      }
-                    }} 
+                  <SearchableSelect
+                    options={branches.map(b => ({ value: b.id, label: b.name }))}
+                    value={formData.branch_id}
+                    onChange={(v) => setFormData({ ...formData, branch_id: v })}
+                    placeholder="Select Branch"
                     required
-                  >
-                    <option value="">Select Branch</option>
-                    {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-                    {canCreateBranch && (
-                      <option value="ADD_NEW" style={{ fontWeight: 'bold', color: '#38a169' }}>+ Add New Branch</option>
-                    )}
-                  </select>
+                    extraOption={canCreateBranch ? { label: '+ Add New Branch', onClick: () => setShowBranchForm(true) } : null}
+                  />
                 </div>
                 <div className="form-group">
                   <label>Quantity</label>
@@ -337,22 +380,13 @@ export default function Assets() {
                 </div>
                 <div className="form-group">
                   <label>Supplier</label>
-                  <select 
-                    value={formData.supplier_id} 
-                    onChange={(e) => {
-                      if (e.target.value === 'ADD_NEW') {
-                        setShowSupplierForm(true);
-                      } else {
-                        setFormData({ ...formData, supplier_id: e.target.value });
-                      }
-                    }}
-                  >
-                    <option value="">Select Supplier</option>
-                    {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                    {canCreateSupplier && (
-                      <option value="ADD_NEW" style={{ fontWeight: 'bold', color: '#38a169' }}>+ Add New Supplier</option>
-                    )}
-                  </select>
+                  <SearchableSelect
+                    options={suppliers.map(s => ({ value: s.id, label: s.name }))}
+                    value={formData.supplier_id}
+                    onChange={(v) => setFormData({ ...formData, supplier_id: v })}
+                    placeholder="Select Supplier"
+                    extraOption={canCreateSupplier ? { label: '+ Add New Supplier', onClick: () => setShowSupplierForm(true) } : null}
+                  />
                 </div>
               </div>
               <div className="form-group">
@@ -466,6 +500,48 @@ export default function Assets() {
                 <button type="submit" className="btn-primary">Add Supplier</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {showFilesModal && (
+        <div className="modal">
+          <div className="modal-content">
+            <h2>📎 Attached Files — {showFilesModal.asset_id}</h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '16px' }}>
+              {[{ key: 'invoice_file', label: 'Invoice' }, { key: 'po_file', label: 'Purchase Order' }, { key: 'dc_file', label: 'Delivery Challan' }, { key: 'testing_report_file', label: 'Testing Report' }]
+                .filter(f => showFilesModal[f.key])
+                .map(f => {
+                  const url = getFileUrl(showFilesModal[f.key]);
+                  const isPdf = /\.pdf$/i.test(showFilesModal[f.key]);
+                  const isImg = isImage(showFilesModal[f.key]);
+                  return (
+                    <div key={f.key} style={{ border: '2px solid #e2e8f0', borderRadius: '10px', overflow: 'hidden' }}>
+                      <div style={{ padding: '12px 18px', background: '#f7fafc', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #e2e8f0' }}>
+                        <span style={{ fontWeight: 700, color: '#2d3748' }}>📄 {f.label}</span>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <a href={url} target="_blank" rel="noopener noreferrer" style={{ padding: '6px 14px', background: '#667eea', color: 'white', borderRadius: '6px', textDecoration: 'none', fontSize: '12px', fontWeight: 600 }}>View</a>
+                          <a href={`http://localhost:5000/api/assets/${showFilesModal.id}/file/${f.key}/download`} style={{ padding: '6px 14px', background: '#38a169', color: 'white', borderRadius: '6px', textDecoration: 'none', fontSize: '12px', fontWeight: 600 }}>Download</a>
+                          {canDelete && (
+                            <button onClick={() => handleDeleteFile(showFilesModal.id, f.key, f.label)} style={{ padding: '6px 14px', background: '#e53e3e', color: 'white', borderRadius: '6px', border: 'none', fontSize: '12px', fontWeight: 600, cursor: 'pointer', width: 'auto' }}>Delete</button>
+                          )}
+                        </div>
+                      </div>
+                      <div style={{ padding: '12px', background: 'white', maxHeight: '300px', overflow: 'auto' }}>
+                        {isImg && <img src={url} alt={f.label} style={{ maxWidth: '100%', borderRadius: '6px' }} />}
+                        {isPdf && <iframe src={url} title={f.label} style={{ width: '100%', height: '280px', border: 'none', borderRadius: '6px' }} />}
+                        {!isImg && !isPdf && <p style={{ color: '#718096', textAlign: 'center', padding: '20px' }}>Preview not available — use Preview button to open</p>}
+                      </div>
+                    </div>
+                  );
+                })}
+              {![showFilesModal.invoice_file, showFilesModal.po_file, showFilesModal.dc_file, showFilesModal.testing_report_file].some(Boolean) && (
+                <p style={{ textAlign: 'center', color: '#718096', padding: '30px' }}>All files have been removed</p>
+              )}
+            </div>
+            <div className="form-actions">
+              <button type="button" onClick={() => setShowFilesModal(null)}>Close</button>
+            </div>
           </div>
         </div>
       )}

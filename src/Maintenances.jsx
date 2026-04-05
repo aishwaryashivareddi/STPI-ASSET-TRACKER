@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { maintenances, assets } from './api';
 import { validateFile } from './utils/fileValidation';
 import Pagination from './components/Pagination';
+import { useToast } from './components/Toast';
+import SearchableSelect from './components/SearchableSelect';
 
 export default function Maintenances() {
   const [list, setList] = useState([]);
@@ -16,6 +18,7 @@ export default function Maintenances() {
   const [sortOrder, setSortOrder] = useState('DESC');
   const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, totalPages: 1 });
   const navigate = useNavigate();
+  const toast = useToast();
 
   const [formData, setFormData] = useState({
     asset_id: '', maintenance_type: 'Preventive', issue_description: '',
@@ -47,7 +50,7 @@ export default function Maintenances() {
     try {
       const [mainRes, assetRes] = await Promise.all([
         maintenances.getAll({ search: debouncedSearch, sortBy, sortOrder, page: pagination.page, limit: pagination.limit }),
-        assets.getAll()
+        assets.getAll({ limit: 9999 })
       ]);
       setList(mainRes.data.data.maintenances);
       setPagination(mainRes.data.data.pagination);
@@ -68,6 +71,7 @@ export default function Maintenances() {
       await maintenances.create(data);
       setShowForm(false);
       setFormData({ asset_id: '', maintenance_type: 'Preventive', issue_description: '', scheduled_date: '', cost: '', vendor_name: '' });
+      toast('Maintenance record created');
       loadData();
     } catch (err) {
       alert('Failed to create maintenance: ' + (err.response?.data?.message || err.message));
@@ -78,6 +82,7 @@ export default function Maintenances() {
     const data = new FormData();
     try {
       await maintenances.complete(id, data);
+      toast('Maintenance completed');
       loadData();
     } catch (err) {
       alert('Failed to complete: ' + (err.response?.data?.message || err.message));
@@ -91,6 +96,7 @@ export default function Maintenances() {
 
     try {
       await maintenances.delete(item.id);
+      toast('Maintenance deleted');
       loadData();
     } catch (err) {
       alert('Failed to delete maintenance: ' + (err.response?.data?.message || err.message));
@@ -148,7 +154,9 @@ export default function Maintenances() {
             </tr>
           </thead>
           <tbody>
-            {list.map((item) => (
+            {list.length === 0 ? (
+              <tr><td colSpan="7" style={{ textAlign: 'center', padding: '40px', color: '#718096' }}>No maintenance records found</td></tr>
+            ) : list.map((item) => (
               <tr key={item.id}>
                 <td>{item.maintenance_id}</td>
                 <td>{item.asset?.name}</td>
@@ -183,10 +191,13 @@ export default function Maintenances() {
             <form onSubmit={handleSubmit}>
               <div className="form-group">
                 <label>Asset *</label>
-                <select value={formData.asset_id} onChange={(e) => setFormData({ ...formData, asset_id: e.target.value })} required>
-                  <option value="">Select Asset</option>
-                  {assetList.map(a => <option key={a.id} value={a.id}>{a.asset_id} - {a.name}</option>)}
-                </select>
+                <SearchableSelect
+                  options={assetList.map(a => ({ value: a.id, label: `${a.asset_id} - ${a.name}` }))}
+                  value={formData.asset_id}
+                  onChange={(v) => setFormData({ ...formData, asset_id: v })}
+                  placeholder="Select Asset"
+                  required
+                />
               </div>
               <div className="form-group">
                 <label>Type *</label>

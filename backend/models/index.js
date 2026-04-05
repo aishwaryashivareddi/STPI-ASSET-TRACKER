@@ -6,6 +6,7 @@ import Asset from './Asset.js';
 import Procurement from './Procurement.js';
 import Maintenance from './Maintenance.js';
 import Disposal from './Disposal.js';
+import GatewayPass from './GatewayPass.js';
 
 // Branch associations
 Branch.hasMany(Asset, { foreignKey: 'branch_id', onDelete: 'RESTRICT' });
@@ -45,6 +46,15 @@ Maintenance.belongsTo(User, { foreignKey: 'performed_by', as: 'performer' });
 Disposal.belongsTo(Asset, { foreignKey: 'asset_id', as: 'asset' });
 Disposal.belongsTo(User, { foreignKey: 'approved_by', as: 'approver' });
 
+// GatewayPass associations
+GatewayPass.belongsTo(Asset, { foreignKey: 'asset_id', as: 'asset' });
+GatewayPass.belongsTo(Branch, { foreignKey: 'from_branch_id', as: 'fromBranch' });
+GatewayPass.belongsTo(Branch, { foreignKey: 'to_branch_id', as: 'toBranch' });
+GatewayPass.belongsTo(User, { foreignKey: 'created_by', as: 'creator' });
+GatewayPass.belongsTo(User, { foreignKey: 'manager_approved_by', as: 'managerApprover' });
+GatewayPass.belongsTo(User, { foreignKey: 'admin_approved_by', as: 'adminApprover' });
+GatewayPass.belongsTo(User, { foreignKey: 'received_by', as: 'receiver' });
+
 export {
   sequelize,
   Branch,
@@ -53,5 +63,6 @@ export {
   Asset,
   Procurement,
   Maintenance,
-  Disposal
+  Disposal,
+  GatewayPass
 };

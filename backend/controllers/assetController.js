@@ -1,7 +1,7 @@
 import { Asset, Branch, Supplier, User } from '../models/index.js';
 import { Op } from 'sequelize';
 import { generateAssetId } from '../utils/idGenerator.js';
-import { getFilePaths } from '../middleware/fileUpload.js';
+import { getFilePaths, deleteFile } from '../middleware/fileUpload.js';
 import catchAsync from '../utils/catchAsync.js';
 import ApiResponse from '../utils/ApiResponse.js';
 import AppError from '../utils/AppError.js';
@@ -145,8 +145,15 @@ export const updateAsset = catchAsync(async (req, res) => {
 
   const filePaths = getFilePaths(req);
 
+  const cleanedData = { ...req.body };
+  ['supplier_id', 'location', 'po_number', 'purchase_value'].forEach(field => {
+    if (cleanedData[field] === '' || cleanedData[field] === undefined) {
+      cleanedData[field] = null;
+    }
+  });
+
   await asset.update({
-    ...req.body,
+    ...cleanedData,
     ...filePaths,
     updated_by: req.user.id
   });
@@ -236,6 +243,41 @@ export const getAssetStats = catchAsync(async (req, res) => {
     pendingTesting,
     byType
   }, 'Statistics retrieved successfully');
+});
+
+// Delete a specific file from an asset
+export const deleteAssetFile = catchAsync(async (req, res) => {
+  const { fileField } = req.params;
+  const validFields = ['invoice_file', 'po_file', 'dc_file', 'testing_report_file'];
+
+  if (!validFields.includes(fileField)) {
+    throw new AppError('Invalid file field', 400);
+  }
+
+  const asset = await Asset.findByPk(req.params.id);
+  if (!asset) throw new AppError('Asset not found', 404);
+  if (!asset[fileField]) throw new AppError('No file to delete', 404);
+
+  deleteFile(asset[fileField]);
+  await asset.update({ [fileField]: null });
+
+  ApiResponse.success(res, null, 'File deleted successfully');
+});
+
+// Download a specific file
+export const downloadAssetFile = catchAsync(async (req, res) => {
+  const { fileField } = req.params;
+  const validFields = ['invoice_file', 'po_file', 'dc_file', 'testing_report_file'];
+
+  if (!validFields.includes(fileField)) throw new AppError('Invalid file field', 400);
+
+  const asset = await Asset.findByPk(req.params.id);
+  if (!asset) throw new AppError('Asset not found', 404);
+  if (!asset[fileField]) throw new AppError('No file found', 404);
+
+  const filePath = asset[fileField];
+  const fileName = filePath.split(/[\\/]/).pop();
+  res.download(filePath, fileName);
 });
 
 // Bulk import assets

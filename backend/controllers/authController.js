@@ -9,7 +9,7 @@ import { sendPasswordResetEmail } from '../services/emailService.js';
 
 const signToken = (user) => {
   return jwt.sign(
-    { id: user.id, username: user.username, role: user.role },
+    { id: user.id, role: user.role },
     process.env.JWT_SECRET,
     { expiresIn: process.env.JWT_EXPIRE }
   );

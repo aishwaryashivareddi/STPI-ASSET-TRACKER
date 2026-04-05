@@ -13,6 +13,17 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.clear();
+      window.location.href = '/';
+    }
+    return Promise.reject(error);
+  }
+);
+
 export const auth = {
   login: (email, password) => api.post('/auth/login', { email, password }),
   me: () => api.get('/auth/me'),
@@ -27,6 +38,7 @@ export const assets = {
   update: (id, formData) => api.put(`/assets/${id}`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
   confirmTesting: (id, formData) => api.post(`/assets/${id}/testing`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
   delete: (id) => api.delete(`/assets/${id}`),
+  deleteFile: (id, fileField) => api.delete(`/assets/${id}/file/${fileField}`),
   getStats: () => api.get('/assets/stats')
 };
 
@@ -57,6 +69,23 @@ export const master = {
   getSuppliers: () => api.get('/master/suppliers'),
   createBranch: (data) => api.post('/master/branches', data),
   createSupplier: (data) => api.post('/master/suppliers', data)
+};
+
+export const gatewayPasses = {
+  getAll: (params) => api.get('/gateway-passes', { params }),
+  create: (data) => api.post('/gateway-passes', data),
+  managerApprove: (id, data) => api.post(`/gateway-passes/${id}/manager-approve`, data),
+  adminApprove: (id, data) => api.post(`/gateway-passes/${id}/admin-approve`, data),
+  receiverConfirm: (id, data) => api.post(`/gateway-passes/${id}/receive`, data),
+  delete: (id) => api.delete(`/gateway-passes/${id}`)
+};
+
+export const users = {
+  getAll: () => api.get('/users'),
+  create: (data) => api.post('/users', data),
+  update: (id, data) => api.put(`/users/${id}`, data),
+  resetPassword: (id, password) => api.post(`/users/${id}/reset-password`, { password }),
+  delete: (id) => api.delete(`/users/${id}`)
 };
 
 export default api;

@@ -134,3 +134,32 @@ export const generateDisposalId = async (branchId) => {
 
   return `${prefix}${String(sequentialNumber).padStart(3, '0')}`;
 };
+
+
+/**
+ * Generate gateway pass ID
+ */
+export const generateGatewayPassId = async (branchId) => {
+  const branch = await Branch.findByPk(branchId);
+  if (!branch) throw new Error('Branch not found');
+
+  const branchCode = branch.code.toUpperCase();
+  const date = new Date();
+  const dateCode = `${String(date.getDate()).padStart(2, '0')}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getFullYear()).slice(-2)}`;
+  
+  const { GatewayPass } = await import('../models/index.js');
+  const prefix = `${branchCode}${dateCode}GP`;
+  
+  const lastRecord = await GatewayPass.findOne({
+    where: { gateway_pass_id: { [Op.like]: `${prefix}%` } },
+    order: [['gateway_pass_id', 'DESC']]
+  });
+
+  let sequentialNumber = 1;
+  if (lastRecord) {
+    const lastSequence = parseInt(lastRecord.gateway_pass_id.slice(-3));
+    sequentialNumber = lastSequence + 1;
+  }
+
+  return `${prefix}${String(sequentialNumber).padStart(3, '0')}`;
+};
