@@ -11,6 +11,7 @@ export default function GatewayPasses() {
   const [branches, setBranches] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [showApprovalModal, setShowApprovalModal] = useState(null);
+  const [showPrintModal, setShowPrintModal] = useState(null);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
@@ -183,6 +184,9 @@ export default function GatewayPasses() {
                   {canDelete && (
                     <button onClick={() => handleDelete(item)} className="btn-sm btn-danger">Delete</button>
                   )}
+                  {item.status === 'Completed' && (
+                    <button onClick={() => setShowPrintModal(item)} className="btn-sm" style={{ marginLeft: '8px', background: 'linear-gradient(135deg, #2d3748, #1a202c)' }}>Print</button>
+                  )}
                 </td>
               </tr>
             ))}
@@ -252,6 +256,61 @@ export default function GatewayPasses() {
             <div className="form-actions">
               <button type="button" onClick={() => { setShowApprovalModal(null); setApprovalData({ status: 'Approved', remarks: '' }); }}>Cancel</button>
               <button onClick={() => handleApproval(showApprovalModal.id, showApprovalModal.level)} className="btn-primary">Confirm</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showPrintModal && (
+        <div className="modal">
+          <div className="modal-content" style={{ maxWidth: '700px' }}>
+            <div id="gate-pass-print" style={{ fontFamily: 'serif', padding: '30px', border: '2px solid #000' }}>
+              <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+                <h3 style={{ margin: 0 }}>सॉफ्टवेयर टेक्नोलॉजी पार्क्स ऑफ इंडिया</h3>
+                <h3 style={{ margin: '4px 0' }}>Software Technology Parks of India</h3>
+                <p style={{ fontSize: '11px', margin: '4px 0' }}>(An Autonomous Society under Ministry of Electronics and Information Technology, Govt. of India)</p>
+                <p style={{ fontSize: '12px', margin: '4px 0' }}>6Q3, 6th Floor, Cyber Towers, HITEC City, Madhapur, Hyderabad-500 081.</p>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
+                <span><strong>Sl.No.:</strong> {showPrintModal.gateway_pass_id}</span>
+                <span><strong>प्रवेश पत्र / GATE PASS</strong></span>
+                <span><strong>Date:</strong> {new Date(showPrintModal.transfer_date).toLocaleDateString('en-IN')}</span>
+              </div>
+              <ol style={{ fontSize: '13px', lineHeight: '2' }}>
+                <li>Please pass out the following items through:</li>
+                <li><strong>Name/Organisation:</strong> {showPrintModal.fromBranch?.name} → {showPrintModal.toBranch?.name}</li>
+                <li>These items will be returned / <strong>will not be returned</strong>*</li>
+              </ol>
+              <table style={{ width: '100%', borderCollapse: 'collapse', margin: '16px 0', fontSize: '13px' }}>
+                <thead>
+                  <tr>
+                    <th style={{ border: '1px solid #000', padding: '8px' }}>S.No.</th>
+                    <th style={{ border: '1px solid #000', padding: '8px' }}>Name of the Item</th>
+                    <th style={{ border: '1px solid #000', padding: '8px' }}>Qty.</th>
+                    <th style={{ border: '1px solid #000', padding: '8px' }}>Expected Date of return</th>
+                    <th style={{ border: '1px solid #000', padding: '8px' }}>Purpose</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'center' }}>1</td>
+                    <td style={{ border: '1px solid #000', padding: '8px' }}>{showPrintModal.asset?.name} ({showPrintModal.asset?.asset_id})</td>
+                    <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'center' }}>1</td>
+                    <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'center' }}>N/A</td>
+                    <td style={{ border: '1px solid #000', padding: '8px' }}>{showPrintModal.reason}</td>
+                  </tr>
+                </tbody>
+              </table>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '40px', fontSize: '13px' }}>
+                <div><strong>4. Prepared by:</strong><br/>{showPrintModal.creator?.username}</div>
+                <div><strong>5. Authorised by:</strong><br/>{showPrintModal.adminApprover?.username}</div>
+                <div><strong>6. Received by:</strong><br/>{showPrintModal.receiver?.username}</div>
+              </div>
+              <p style={{ fontSize: '11px', marginTop: '20px' }}>*Strike out which is not applicable</p>
+            </div>
+            <div className="form-actions">
+              <button type="button" onClick={() => setShowPrintModal(null)}>Close</button>
+              <button onClick={() => { const el = document.getElementById('gate-pass-print'); const w = window.open('', '', 'width=800,height=600'); w.document.write('<html><body>' + el.innerHTML + '</body></html>'); w.document.close(); w.print(); }} className="btn-primary">🖨 Print</button>
             </div>
           </div>
         </div>

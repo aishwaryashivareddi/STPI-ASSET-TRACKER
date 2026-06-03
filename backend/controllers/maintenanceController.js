@@ -5,6 +5,7 @@ import { getFilePaths } from '../middleware/fileUpload.js';
 import catchAsync from '../utils/catchAsync.js';
 import ApiResponse from '../utils/ApiResponse.js';
 import AppError from '../utils/AppError.js';
+import { sendMaintenanceNotification } from '../services/maintenanceEmailService.js';
 
 // Create maintenance record
 export const createMaintenance = catchAsync(async (req, res) => {
@@ -23,6 +24,9 @@ export const createMaintenance = catchAsync(async (req, res) => {
     ...filePaths,
     performed_by: req.user.id
   });
+
+  // Send email notification to responsible department
+  sendMaintenanceNotification(asset, maintenance, req.user.username).catch(() => {});
 
   ApiResponse.created(res, maintenance, 'Maintenance record created');
 });
