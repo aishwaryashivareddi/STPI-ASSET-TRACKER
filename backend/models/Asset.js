@@ -25,7 +25,7 @@ const Asset = sequelize.define('Asset', {
     type: DataTypes.TEXT
   },
   serial_number: {
-    type: DataTypes.STRING(100)
+    type: DataTypes.STRING(500)
   },
   ams_barcode: {
     type: DataTypes.STRING(50)

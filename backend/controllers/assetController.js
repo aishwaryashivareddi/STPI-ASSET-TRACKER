@@ -70,7 +70,9 @@ export const getAllAssets = catchAsync(async (req, res) => {
     where[Op.or] = [
       { asset_id: { [Op.like]: `%${search}%` } },
       { name: { [Op.like]: `%${search}%` } },
-      { serial_number: { [Op.like]: `%${search}%` } }
+      { serial_number: { [Op.like]: `%${search}%` } },
+      { asset_type: { [Op.like]: `%${search}%` } },
+      { '$supplier.name$': { [Op.like]: `%${search}%` } }
     ];
   }
 

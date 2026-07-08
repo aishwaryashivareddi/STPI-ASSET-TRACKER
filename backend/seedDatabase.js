@@ -191,15 +191,39 @@ async function seedDatabase() {
         return statusMap[upperStatus] || 'Working';
       };
 
+      // Track sequence counters in memory to avoid race conditions
+      const seqCounters = {};
+
+      const generateAssetIdLocal = async (branchId, assetType) => {
+        const branch = await Branch.findByPk(branchId);
+        if (!branch) throw new Error('Branch not found');
+        const branchCode = branch.code.toUpperCase();
+        const date = new Date();
+        const dateCode = `${String(date.getDate()).padStart(2, '0')}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getFullYear()).slice(-2)}`;
+        const CODES = { 'HSDC': 'HD', 'COMPUTER': 'CP', 'ELECTRICAL': 'EL', 'OFFICE': 'OF', 'FURNITURE': 'FR', 'FIREFIGHTING': 'FF', 'BUILDING': 'BD' };
+        const typeCode = CODES[assetType];
+        if (!typeCode) throw new Error('Invalid asset type: ' + assetType);
+        const prefix = `${branchCode}${dateCode}${typeCode}`;
+        if (!seqCounters[prefix]) seqCounters[prefix] = 0;
+        seqCounters[prefix]++;
+        return `${prefix}${String(seqCounters[prefix]).padStart(3, '0')}`;
+      };
+
       for (const assetData of assetsData) {
         try {
+          // Skip entries with invalid/numeric names (bad column mapping)
+          if (!assetData.name || typeof assetData.name === 'number') {
+            console.log(`  Skipping invalid entry (bad name: ${assetData.name})`);
+            continue;
+          }
+
           // Fix asset type
           const fixedAssetType = fixAssetType(assetData.asset_type);
           const fixedStatus = fixStatus(assetData.current_status);
           
-          // Find or create supplier
+          // Find or create supplier (skip if supplier_name looks like a number)
           let supplier = null;
-          if (assetData.supplier_name) {
+          if (assetData.supplier_name && typeof assetData.supplier_name === 'string' && isNaN(assetData.supplier_name)) {
             supplier = await Supplier.findOne({ 
               where: { name: assetData.supplier_name } 
             });
@@ -214,24 +238,24 @@ async function seedDatabase() {
             }
           }
 
-          // Create individual assets based on quantity
-          const quantity = assetData.quantity || 1;
-          for (let i = 0; i < quantity; i++) {
-            // Generate unique asset ID for each item
-            const asset_id = await generateAssetId(assetData.branch_id, fixedAssetType);
+          // Cap quantity to reasonable value (bad data has years like 2016 as quantity)
+          const rawQty = parseInt(assetData.quantity) || 1;
+          const quantity = rawQty > 100 ? 1 : rawQty;
 
-            // Create individual asset
+          for (let i = 0; i < quantity; i++) {
+            const asset_id = await generateAssetIdLocal(assetData.branch_id, fixedAssetType);
+
             await Asset.create({
               asset_id,
               asset_type: fixedAssetType,
-              name: assetData.name,
+              name: String(assetData.name).substring(0, 255),
               quantity: 1,
               branch_id: assetData.branch_id,
               location: assetData.location,
-              serial_number: assetData.serial_number,
-              ams_barcode: assetData.ams_barcode,
+              serial_number: assetData.serial_number ? String(assetData.serial_number).substring(0, 500) : null,
+              ams_barcode: assetData.ams_barcode ? String(assetData.ams_barcode).substring(0, 50) : null,
               supplier_id: supplier ? supplier.id : null,
-              po_number: assetData.po_number,
+              po_number: assetData.po_number ? String(assetData.po_number).substring(0, 100) : null,
               po_date: parseDate(assetData.po_date),
               invoice_date: parseDate(assetData.invoice_date),
               purchase_value: assetData.purchase_value,

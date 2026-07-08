@@ -233,7 +233,7 @@ export default function Assets() {
           <span className="search-icon"></span>
           <input 
             type="text" 
-            placeholder="Search by ID, name, serial number..." 
+            placeholder="Search by ID, name, serial number, supplier, type..." 
             value={search} 
             onChange={(e) => { setSearch(e.target.value); setPagination({ ...pagination, page: 1 }); }}
           />
