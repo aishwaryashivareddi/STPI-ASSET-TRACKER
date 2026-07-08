@@ -133,7 +133,7 @@ export default function GatewayPasses() {
                 <td>{item.gateway_pass_id}</td>
                 <td>{item.asset?.name}</td>
                 <td>{item.fromBranch?.name} → {item.toBranch?.name}</td>
-                <td>{item.creator?.username}</td>
+                <td>{item.prepared_by_person || item.creator?.username}</td>
                 <td>{new Date(item.transfer_date).toLocaleDateString()}</td>
                 <td>
                   <button onClick={() => setShowPrintModal(item)} className="btn-sm" style={{ marginRight: '4px', background: 'linear-gradient(135deg, #2d3748, #1a202c)' }}>Print</button>
