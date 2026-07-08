@@ -30,7 +30,7 @@ export default function Assets() {
 
   const [formData, setFormData] = useState({
     name: '', asset_type: 'COMPUTER', branch_id: '', quantity: 1,
-    location: '', purchase_value: '', po_number: '', supplier_id: ''
+    location: '', purchase_value: '', po_number: '', supplier_id: '', serial_number: ''
   });
 
   const [files, setFiles] = useState({});
@@ -106,7 +106,7 @@ export default function Assets() {
       }
       setShowForm(false);
       setEditingAsset(null);
-      setFormData({ name: '', asset_type: 'COMPUTER', branch_id: '', quantity: 1, location: '', purchase_value: '', po_number: '', supplier_id: '' });
+      setFormData({ name: '', asset_type: 'COMPUTER', branch_id: '', quantity: 1, location: '', purchase_value: '', po_number: '', supplier_id: '', serial_number: '' });
       setFiles({});
       loadData();
     } catch (err) {
@@ -124,7 +124,8 @@ export default function Assets() {
       location: asset.location || '',
       purchase_value: asset.purchase_value || '',
       po_number: asset.po_number || '',
-      supplier_id: asset.supplier_id || ''
+      supplier_id: asset.supplier_id || '',
+      serial_number: asset.serial_number || ''
     });
     setShowForm(true);
   };
@@ -232,7 +233,7 @@ export default function Assets() {
           <span className="search-icon"></span>
           <input 
             type="text" 
-            placeholder="Search by ID, name, location..." 
+            placeholder="Search by ID, name, serial number..." 
             value={search} 
             onChange={(e) => { setSearch(e.target.value); setPagination({ ...pagination, page: 1 }); }}
           />
@@ -275,6 +276,7 @@ export default function Assets() {
                 Type {sortBy === 'asset_type' && (sortOrder === 'ASC' ? '↑' : '↓')}
               </th>
               <th>Branch</th>
+              <th>Serial No.</th>
               <th>Supplier</th>
               <th onClick={() => { setSortBy('current_status'); setSortOrder(sortOrder === 'ASC' ? 'DESC' : 'ASC'); }} style={{ cursor: 'pointer' }}>
                 Status {sortBy === 'current_status' && (sortOrder === 'ASC' ? '↑' : '↓')}
@@ -288,13 +290,14 @@ export default function Assets() {
           </thead>
           <tbody>
             {assetList.length === 0 ? (
-              <tr><td colSpan="9" style={{ textAlign: 'center', padding: '40px', color: '#718096' }}>No assets found</td></tr>
+              <tr><td colSpan="10" style={{ textAlign: 'center', padding: '40px', color: '#718096' }}>No assets found</td></tr>
             ) : assetList.map((asset) => (
               <tr key={asset.id}>
                 <td>{asset.asset_id}</td>
                 <td>{asset.name}</td>
                 <td>{asset.asset_type}</td>
                 <td>{asset.branch?.name}</td>
+                <td>{asset.serial_number || '-'}</td>
                 <td>{asset.supplier?.name || '-'}</td>
                 <td><span className={`badge ${asset.current_status.toLowerCase().replace(' ', '-')}`}>{asset.current_status}</span></td>
                 <td><span className={`badge ${asset.testing_status.toLowerCase()}`}>{asset.testing_status}</span></td>
@@ -378,6 +381,12 @@ export default function Assets() {
                   <label>PO Number</label>
                   <input value={formData.po_number} onChange={(e) => setFormData({ ...formData, po_number: e.target.value })} />
                 </div>
+                <div className="form-group">
+                  <label>Serial Number</label>
+                  <input value={formData.serial_number} onChange={(e) => setFormData({ ...formData, serial_number: e.target.value })} placeholder="e.g., SN-12345" />
+                </div>
+              </div>
+              <div className="form-row">
                 <div className="form-group">
                   <label>Supplier</label>
                   <SearchableSelect

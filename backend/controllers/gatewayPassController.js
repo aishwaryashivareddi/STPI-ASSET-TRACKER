@@ -4,20 +4,23 @@ import { generateGatewayPassId } from '../utils/idGenerator.js';
 import catchAsync from '../utils/catchAsync.js';
 import ApiResponse from '../utils/ApiResponse.js';
 import AppError from '../utils/AppError.js';
+import PDFDocument from 'pdfkit';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const GP_INCLUDES = [
   { model: Asset, as: 'asset' },
   { model: Branch, as: 'fromBranch' },
   { model: Branch, as: 'toBranch' },
-  { model: User, as: 'creator', attributes: ['id', 'username'] },
-  { model: User, as: 'managerApprover', attributes: ['id', 'username'] },
-  { model: User, as: 'adminApprover', attributes: ['id', 'username'] },
-  { model: User, as: 'receiver', attributes: ['id', 'username'] }
+  { model: User, as: 'creator', attributes: ['id', 'username'] }
 ];
 
-// Create gateway pass request
+// Create gateway pass - auto completes and transfers asset
 export const createGatewayPass = catchAsync(async (req, res) => {
-  const { asset_id, to_branch_id, reason, transfer_date } = req.body;
+  const { asset_id, to_branch_id, reason, transfer_date, pass_through_person, prepared_by_person, authorized_by_person, received_by_person } = req.body;
 
   const asset = await Asset.findByPk(asset_id);
   if (!asset) throw new AppError('Asset not found', 404);
@@ -25,11 +28,6 @@ export const createGatewayPass = catchAsync(async (req, res) => {
   if (asset.branch_id === parseInt(to_branch_id)) {
     throw new AppError('Source and destination branch cannot be the same', 400);
   }
-
-  const existing = await GatewayPass.findOne({
-    where: { asset_id, status: { [Op.in]: ['Pending', 'Manager Approved', 'Admin Approved'] } }
-  });
-  if (existing) throw new AppError('Asset already has a pending transfer request', 400);
 
   const gateway_pass_id = await generateGatewayPassId(asset.branch_id);
 
@@ -40,19 +38,26 @@ export const createGatewayPass = catchAsync(async (req, res) => {
     to_branch_id,
     reason,
     transfer_date,
-    created_by: req.user.id
+    pass_through_person,
+    prepared_by_person,
+    authorized_by_person,
+    received_by_person,
+    created_by: req.user.id,
+    status: 'Completed'
   });
 
+  // Transfer asset to destination branch immediately
+  await asset.update({ branch_id: to_branch_id });
+
   const result = await GatewayPass.findByPk(gp.id, { include: GP_INCLUDES });
-  ApiResponse.created(res, result, 'Gateway pass created');
+  ApiResponse.created(res, result, 'Gateway pass created and asset transferred');
 });
 
 // Get all gateway passes
 export const getAllGatewayPasses = catchAsync(async (req, res) => {
-  const { status, search, sortBy = 'createdAt', sortOrder = 'DESC', page = 1, limit = 20 } = req.query;
+  const { search, sortBy = 'createdAt', sortOrder = 'DESC', page = 1, limit = 20 } = req.query;
 
   const where = {};
-  if (status) where.status = status;
   if (search) {
     where[Op.or] = [
       { gateway_pass_id: { [Op.like]: `%${search}%` } },
@@ -61,7 +66,7 @@ export const getAllGatewayPasses = catchAsync(async (req, res) => {
   }
 
   const offset = (page - 1) * limit;
-  const validSortFields = ['gateway_pass_id', 'transfer_date', 'status', 'createdAt'];
+  const validSortFields = ['gateway_pass_id', 'transfer_date', 'createdAt'];
   const orderField = validSortFields.includes(sortBy) ? sortBy : 'createdAt';
   const orderDirection = sortOrder.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
 
@@ -79,75 +84,101 @@ export const getAllGatewayPasses = catchAsync(async (req, res) => {
   });
 });
 
-// Level 1 - Manager Approval
-export const managerApprove = catchAsync(async (req, res) => {
-  const { status, remarks } = req.body;
-  const gp = await GatewayPass.findByPk(req.params.id);
-
+// Download gateway pass as PDF
+export const downloadGatewayPassPDF = catchAsync(async (req, res) => {
+  const gp = await GatewayPass.findByPk(req.params.id, { include: GP_INCLUDES });
   if (!gp) throw new AppError('Gateway pass not found', 404);
-  if (gp.status !== 'Pending') throw new AppError('Gateway pass is not pending manager approval', 400);
 
-  const newStatus = status === 'Approved' ? 'Manager Approved' : 'Rejected';
+  const doc = new PDFDocument({ size: 'A4', margin: 50 });
 
-  await gp.update({
-    manager_status: status,
-    manager_approved_by: req.user.id,
-    manager_approved_at: new Date(),
-    manager_remarks: remarks,
-    status: newStatus
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', `attachment; filename=GatePass_${gp.gateway_pass_id}.pdf`);
+  doc.pipe(res);
+
+  // Logo
+  const logoPath = path.join(__dirname, '..', '..', 'public', 'stpi-logo.png');
+  try { doc.image(logoPath, 50, 40, { width: 50 }); } catch (e) {}
+
+  // Header
+  doc.font('Helvetica-Bold').fontSize(14)
+    .text('Software Technology Parks of India', 110, 45, { align: 'center' });
+  doc.font('Helvetica').fontSize(9)
+    .text('(An Autonomous Society under Ministry of Electronics and Information Technology, Govt. of India)', 110, 63, { align: 'center' });
+  doc.fontSize(10)
+    .text('6Q3, 6th Floor, Cyber Towers, HITEC City, Madhapur, Hyderabad-500 081.', 110, 76, { align: 'center' });
+
+  // Line separator
+  doc.moveTo(50, 95).lineTo(545, 95).stroke();
+
+  // Gate Pass title
+  doc.font('Helvetica-Bold').fontSize(16)
+    .text('GATE PASS', 0, 105, { align: 'center' });
+
+  // Meta info
+  const y1 = 135;
+  doc.font('Helvetica').fontSize(10);
+  doc.text(`Sl.No.: ${gp.gateway_pass_id}`, 50, y1);
+  doc.text(`Date: ${new Date(gp.transfer_date).toLocaleDateString('en-IN')}`, 400, y1);
+
+  // Content
+  let y = 165;
+  doc.font('Helvetica').fontSize(11);
+  doc.text(`1. Please pass out the following items through: `, 50, y, { continued: true })
+    .font('Helvetica-Bold').text(gp.pass_through_person || '—');
+
+  y += 25;
+  doc.font('Helvetica').text(`2. Name/Organisation: `, 50, y, { continued: true })
+    .font('Helvetica-Bold').text(`${gp.fromBranch?.name || ''} → ${gp.toBranch?.name || ''}`);
+
+  y += 25;
+  doc.font('Helvetica').text('3. These items will be returned / ', 50, y, { continued: true })
+    .font('Helvetica-Bold').text('will not be returned*');
+
+  // Table
+  y += 35;
+  const tableTop = y;
+  const colWidths = [40, 180, 40, 120, 115];
+  const headers = ['S.No.', 'Name of the Item', 'Qty.', 'Expected Date of Return', 'Purpose'];
+  const tableLeft = 50;
+
+  // Table header
+  doc.font('Helvetica-Bold').fontSize(9);
+  let xPos = tableLeft;
+  headers.forEach((h, i) => {
+    doc.rect(xPos, tableTop, colWidths[i], 25).stroke();
+    doc.text(h, xPos + 4, tableTop + 7, { width: colWidths[i] - 8, align: 'center' });
+    xPos += colWidths[i];
   });
 
-  const result = await GatewayPass.findByPk(gp.id, { include: GP_INCLUDES });
-  ApiResponse.success(res, result, `Gateway pass ${status.toLowerCase()} by manager`);
-});
-
-// Level 2 - Admin Approval
-export const adminApprove = catchAsync(async (req, res) => {
-  const { status, remarks } = req.body;
-  const gp = await GatewayPass.findByPk(req.params.id);
-
-  if (!gp) throw new AppError('Gateway pass not found', 404);
-  if (gp.status !== 'Manager Approved') throw new AppError('Gateway pass is not pending admin approval', 400);
-
-  const newStatus = status === 'Approved' ? 'Admin Approved' : 'Rejected';
-
-  await gp.update({
-    admin_status: status,
-    admin_approved_by: req.user.id,
-    admin_approved_at: new Date(),
-    admin_remarks: remarks,
-    status: newStatus
+  // Table row
+  const rowTop = tableTop + 25;
+  const rowData = ['1', `${gp.asset?.name || ''} (${gp.asset?.asset_id || ''})`, '1', 'N/A', gp.reason || ''];
+  doc.font('Helvetica').fontSize(9);
+  xPos = tableLeft;
+  rowData.forEach((d, i) => {
+    doc.rect(xPos, rowTop, colWidths[i], 30).stroke();
+    doc.text(d, xPos + 4, rowTop + 8, { width: colWidths[i] - 8, align: 'center' });
+    xPos += colWidths[i];
   });
 
-  const result = await GatewayPass.findByPk(gp.id, { include: GP_INCLUDES });
-  ApiResponse.success(res, result, `Gateway pass ${status.toLowerCase()} by admin`);
-});
+  // Signatures
+  y = rowTop + 60;
+  doc.font('Helvetica-Bold').fontSize(11);
+  doc.text('4. Prepared by:', 50, y);
+  doc.font('Helvetica').text(gp.prepared_by_person || gp.creator?.username || '', 50, y + 16);
 
-// Level 3 - Receiver Confirmation
-export const receiverConfirm = catchAsync(async (req, res) => {
-  const { status, remarks } = req.body;
-  const gp = await GatewayPass.findByPk(req.params.id, { include: [{ model: Asset, as: 'asset' }] });
+  doc.font('Helvetica-Bold').text('5. Authorised by:', 230, y);
+  doc.font('Helvetica').text(gp.authorized_by_person || '', 230, y + 16);
 
-  if (!gp) throw new AppError('Gateway pass not found', 404);
-  if (gp.status !== 'Admin Approved') throw new AppError('Gateway pass is not pending receiver confirmation', 400);
+  doc.font('Helvetica-Bold').text('6. Received by:', 410, y);
+  doc.font('Helvetica').text(gp.received_by_person || '', 410, y + 16);
 
-  const newStatus = status === 'Received' ? 'Completed' : 'Rejected';
+  // Footer note
+  y += 50;
+  doc.font('Helvetica').fontSize(9)
+    .text('*Strike out which is not applicable', 50, y);
 
-  await gp.update({
-    receiver_status: status,
-    received_by: req.user.id,
-    received_at: new Date(),
-    receiver_remarks: remarks,
-    status: newStatus
-  });
-
-  // Transfer asset to new branch on completion
-  if (newStatus === 'Completed') {
-    await gp.asset.update({ branch_id: gp.to_branch_id });
-  }
-
-  const result = await GatewayPass.findByPk(gp.id, { include: GP_INCLUDES });
-  ApiResponse.success(res, result, `Asset ${newStatus === 'Completed' ? 'received and transferred' : 'rejected by receiver'}`);
+  doc.end();
 });
 
 // Delete gateway pass (Admin only)

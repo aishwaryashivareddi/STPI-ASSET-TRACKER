@@ -51,9 +51,6 @@ GatewayPass.belongsTo(Asset, { foreignKey: 'asset_id', as: 'asset' });
 GatewayPass.belongsTo(Branch, { foreignKey: 'from_branch_id', as: 'fromBranch' });
 GatewayPass.belongsTo(Branch, { foreignKey: 'to_branch_id', as: 'toBranch' });
 GatewayPass.belongsTo(User, { foreignKey: 'created_by', as: 'creator' });
-GatewayPass.belongsTo(User, { foreignKey: 'manager_approved_by', as: 'managerApprover' });
-GatewayPass.belongsTo(User, { foreignKey: 'admin_approved_by', as: 'adminApprover' });
-GatewayPass.belongsTo(User, { foreignKey: 'received_by', as: 'receiver' });
 
 export {
   sequelize,

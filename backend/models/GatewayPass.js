@@ -35,59 +35,25 @@ const GatewayPass = sequelize.define('GatewayPass', {
     type: DataTypes.DATEONLY,
     allowNull: false
   },
+  pass_through_person: {
+    type: DataTypes.STRING(100)
+  },
+  prepared_by_person: {
+    type: DataTypes.STRING(100)
+  },
+  authorized_by_person: {
+    type: DataTypes.STRING(100)
+  },
+  received_by_person: {
+    type: DataTypes.STRING(100)
+  },
   created_by: {
     type: DataTypes.INTEGER,
     references: { model: 'users', key: 'id' }
   },
-  // Level 1 - Manager Approval
-  manager_status: {
-    type: DataTypes.ENUM('Pending', 'Approved', 'Rejected'),
-    defaultValue: 'Pending'
-  },
-  manager_approved_by: {
-    type: DataTypes.INTEGER,
-    references: { model: 'users', key: 'id' }
-  },
-  manager_approved_at: {
-    type: DataTypes.DATE
-  },
-  manager_remarks: {
-    type: DataTypes.TEXT
-  },
-  // Level 2 - Admin Approval
-  admin_status: {
-    type: DataTypes.ENUM('Pending', 'Approved', 'Rejected'),
-    defaultValue: 'Pending'
-  },
-  admin_approved_by: {
-    type: DataTypes.INTEGER,
-    references: { model: 'users', key: 'id' }
-  },
-  admin_approved_at: {
-    type: DataTypes.DATE
-  },
-  admin_remarks: {
-    type: DataTypes.TEXT
-  },
-  // Level 3 - Receiver Confirmation
-  receiver_status: {
-    type: DataTypes.ENUM('Pending', 'Received', 'Rejected'),
-    defaultValue: 'Pending'
-  },
-  received_by: {
-    type: DataTypes.INTEGER,
-    references: { model: 'users', key: 'id' }
-  },
-  received_at: {
-    type: DataTypes.DATE
-  },
-  receiver_remarks: {
-    type: DataTypes.TEXT
-  },
-  // Overall status
   status: {
-    type: DataTypes.ENUM('Pending', 'Manager Approved', 'Admin Approved', 'Completed', 'Rejected'),
-    defaultValue: 'Pending'
+    type: DataTypes.ENUM('Completed'),
+    defaultValue: 'Completed'
   }
 }, {
   tableName: 'gateway_passes',

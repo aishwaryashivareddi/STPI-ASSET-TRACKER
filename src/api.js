@@ -74,9 +74,7 @@ export const master = {
 export const gatewayPasses = {
   getAll: (params) => api.get('/gateway-passes', { params }),
   create: (data) => api.post('/gateway-passes', data),
-  managerApprove: (id, data) => api.post(`/gateway-passes/${id}/manager-approve`, data),
-  adminApprove: (id, data) => api.post(`/gateway-passes/${id}/admin-approve`, data),
-  receiverConfirm: (id, data) => api.post(`/gateway-passes/${id}/receive`, data),
+  downloadPDF: (id) => api.get(`/gateway-passes/${id}/download-pdf`, { responseType: 'blob' }),
   delete: (id) => api.delete(`/gateway-passes/${id}`)
 };
 
