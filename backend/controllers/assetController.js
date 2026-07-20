@@ -6,6 +6,7 @@ import { getFilePaths, deleteFile } from '../middleware/fileUpload.js';
 import catchAsync from '../utils/catchAsync.js';
 import ApiResponse from '../utils/ApiResponse.js';
 import AppError from '../utils/AppError.js';
+import * as XLSX from 'xlsx';
 
 // Create new asset
 export const createAsset = catchAsync(async (req, res) => {
@@ -299,7 +300,7 @@ export const bulkCreateAssets = catchAsync(async (req, res) => {
   try {
     const createdAssets = [];
     for (let i = 0; i < qty; i++) {
-      const asset_id = await generateAssetId(branch_id, asset_type);
+      const asset_id = await generateAssetId(branch_id, asset_type, i);
       const asset = await Asset.create({
         ...cleanedData, asset_id, branch_id, asset_type, created_by: req.user.id
       }, { transaction: t });
@@ -313,29 +314,74 @@ export const bulkCreateAssets = catchAsync(async (req, res) => {
   }
 });
 
-// Bulk import assets
+// Bulk import assets from Excel/CSV file
 export const bulkImportAssets = catchAsync(async (req, res) => {
-  const { assets } = req.body;
+  if (!req.file) throw new AppError('No file uploaded', 400);
 
-  if (!Array.isArray(assets) || assets.length === 0) {
-    throw new AppError('Invalid assets data', 400);
-  }
+  const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+  const sheet = workbook.Sheets[workbook.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
 
+  if (!rows.length) throw new AppError('File is empty or has no data rows', 400);
+
+  // Validate required columns
+  const required = ['name', 'asset_type', 'branch_id'];
+  const headers = Object.keys(rows[0]).map(k => k.toLowerCase().trim());
+  const missing = required.filter(r => !headers.includes(r));
+  if (missing.length) throw new AppError(`Missing required columns: ${missing.join(', ')}`, 400);
+
+  const VALID_TYPES = ['HSDC', 'COMPUTER', 'ELECTRICAL', 'OFFICE', 'FURNITURE', 'FIREFIGHTING', 'BUILDING'];
+
+  const t = await sequelize.transaction();
   const createdAssets = [];
+  const errors = [];
 
-  for (const assetData of assets) {
-    const asset_id = await generateAssetId(assetData.branch_id, assetData.asset_type);
-    const asset = await Asset.create({
-      ...assetData,
-      asset_id,
-      created_by: req.user.id
-    });
-    createdAssets.push(asset);
+  try {
+    for (let i = 0; i < rows.length; i++) {
+      // Normalize keys to lowercase
+      const raw = Object.fromEntries(Object.entries(rows[i]).map(([k, v]) => [k.toLowerCase().trim(), v]));
+
+      const asset_type = String(raw.asset_type || '').toUpperCase().trim();
+      if (!VALID_TYPES.includes(asset_type)) {
+        errors.push(`Row ${i + 2}: Invalid asset_type "${raw.asset_type}". Must be one of: ${VALID_TYPES.join(', ')}`);
+        continue;
+      }
+
+      const branch_id = parseInt(raw.branch_id);
+      if (!branch_id) {
+        errors.push(`Row ${i + 2}: Invalid branch_id "${raw.branch_id}"`);
+        continue;
+      }
+
+      const asset_id = await generateAssetId(branch_id, asset_type, createdAssets.length);
+      const asset = await Asset.create({
+        name: String(raw.name).trim(),
+        asset_type,
+        branch_id,
+        asset_id,
+        location: raw.location || null,
+        purchase_value: raw.purchase_value ? parseFloat(raw.purchase_value) : null,
+        po_number: raw.po_number || null,
+        serial_number: raw.serial_number || null,
+        supplier_id: raw.supplier_id ? parseInt(raw.supplier_id) : null,
+        warranty_expiry: raw.warranty_expiry || null,
+        created_by: req.user.id
+      }, { transaction: t });
+      createdAssets.push(asset);
+    }
+    await t.commit();
+  } catch (err) {
+    await t.rollback();
+    throw err;
   }
 
   res.status(201).json({
     success: true,
-    message: `${createdAssets.length} assets imported successfully`,
-    data: { count: createdAssets.length, assets: createdAssets }
+    message: `${createdAssets.length} assets imported successfully${errors.length ? `, ${errors.length} rows skipped` : ''}`,
+    data: {
+      count: createdAssets.length,
+      asset_ids: createdAssets.map(a => a.asset_id),
+      errors
+    }
   });
 });

@@ -33,7 +33,7 @@ export default function Assets() {
   const toast = useToast();
 
   const [formData, setFormData] = useState({
-    name: '', asset_type: 'COMPUTER', branch_id: '', quantity: 1,
+    name: '', asset_type: 'COMPUTER', branch_id: '',
     location: '', purchase_value: '', po_number: '', supplier_id: '', serial_number: ''
   });
 
@@ -94,24 +94,6 @@ export default function Assets() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const qty = parseInt(formData.quantity) || 1;
-
-    // Bulk create — quantity > 1, not editing
-    if (!editingAsset && qty > 1) {
-      const hasFiles = Object.values(files).some(Boolean);
-      if (hasFiles && !window.confirm(`Files cannot be attached during bulk creation. ${qty} assets will be created without files. Continue?`)) return;
-      try {
-        const res = await assets.bulkCreate(formData);
-        toast(`${res.data.data.count} assets created: ${res.data.data.asset_ids.slice(0, 3).join(', ')}${res.data.data.count > 3 ? '...' : ''}`);
-        setShowForm(false);
-        setFormData({ name: '', asset_type: 'COMPUTER', branch_id: '', quantity: 1, location: '', purchase_value: '', po_number: '', supplier_id: '', serial_number: '' });
-        setFiles({});
-        loadData();
-      } catch (err) {
-        toast('Failed to bulk create: ' + (err.response?.data?.message || err.message), 'error');
-      }
-      return;
-    }
 
     // Single create or edit
     const data = new FormData();
@@ -130,7 +112,7 @@ export default function Assets() {
       }
       setShowForm(false);
       setEditingAsset(null);
-      setFormData({ name: '', asset_type: 'COMPUTER', branch_id: '', quantity: 1, location: '', purchase_value: '', po_number: '', supplier_id: '', serial_number: '' });
+      setFormData({ name: '', asset_type: 'COMPUTER', branch_id: '', location: '', purchase_value: '', po_number: '', supplier_id: '', serial_number: '' });
       setFiles({});
       loadData();
     } catch (err) {
@@ -144,7 +126,6 @@ export default function Assets() {
       name: asset.name,
       asset_type: asset.asset_type,
       branch_id: asset.branch_id,
-      quantity: asset.quantity,
       location: asset.location || '',
       purchase_value: asset.purchase_value || '',
       po_number: asset.po_number || '',
@@ -262,6 +243,7 @@ export default function Assets() {
             <button onClick={() => setShowBulkQR(true)} style={{ marginRight: '8px', background: 'linear-gradient(135deg, #805ad5, #6b46c1)', color: 'white', border: 'none', borderRadius: '8px', padding: '10px 16px', cursor: 'pointer', fontWeight: 600 }}>🖨 Bulk QR ({selectedAssets.length})</button>
           )}
           <button onClick={() => navigate('/qr-scanner')} style={{ marginRight: '8px', background: 'linear-gradient(135deg, #dd6b20, #c05621)', color: 'white', border: 'none', borderRadius: '8px', padding: '10px 16px', cursor: 'pointer', fontWeight: 600 }}>📷 Scan QR</button>
+          <button onClick={() => navigate('/assets/bulk')} style={{ marginRight: '8px', background: 'linear-gradient(135deg, #38a169, #276749)', color: 'white', border: 'none', borderRadius: '8px', padding: '10px 16px', cursor: 'pointer', fontWeight: 600 }}>📦 Bulk Create</button>
           <button onClick={() => setShowForm(true)} className="btn-primary">+ Add Asset</button>
         </div>
       </header>
@@ -403,10 +385,6 @@ export default function Assets() {
                     required
                     extraOption={canCreateBranch ? { label: '+ Add New Branch', onClick: () => setShowBranchForm(true) } : null}
                   />
-                </div>
-                <div className="form-group">
-                  <label>Quantity {!editingAsset && parseInt(formData.quantity) > 1 && <span style={{ color: '#805ad5', fontSize: '12px' }}>— Bulk: {formData.quantity} assets will be created</span>}</label>
-                  <input type="number" min="1" max="500" value={formData.quantity} onChange={(e) => setFormData({ ...formData, quantity: e.target.value })} />
                 </div>
               </div>
               <div className="form-row">

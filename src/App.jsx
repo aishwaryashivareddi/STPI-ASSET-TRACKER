@@ -13,6 +13,7 @@ import UserManagement from './UserManagement';
 import ForgotPassword from './ForgotPassword';
 import ResetPassword from './ResetPassword';
 import QRScanner from './QRScanner';
+import BulkAssetCreate from './BulkAssetCreate';
 
 export default function App() {
   return (
@@ -25,6 +26,7 @@ export default function App() {
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="/assets" element={<ProtectedRoute><Assets /></ProtectedRoute>} />
+            <Route path="/assets/bulk" element={<ProtectedRoute><BulkAssetCreate /></ProtectedRoute>} />
             <Route path="/procurements" element={<ProtectedRoute><Procurements /></ProtectedRoute>} />
             <Route path="/maintenances" element={<ProtectedRoute><Maintenances /></ProtectedRoute>} />
             <Route path="/disposals" element={<ProtectedRoute><Disposals /></ProtectedRoute>} />

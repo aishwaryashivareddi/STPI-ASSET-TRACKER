@@ -60,6 +60,17 @@ export const upload = multer({
   }
 });
 
+// In-memory upload for Excel/CSV import (no disk storage needed)
+export const excelUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const allowed = /csv|xls|xlsx/;
+    if (allowed.test(path.extname(file.originalname).toLowerCase())) cb(null, true);
+    else cb(new Error('Only Excel (.xlsx, .xls) and CSV files are allowed'));
+  }
+}).single('file');
+
 // Multiple file upload fields
 export const assetFileUpload = upload.fields([
   { name: 'invoice_file', maxCount: 1 },

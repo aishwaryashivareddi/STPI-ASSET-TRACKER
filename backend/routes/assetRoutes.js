@@ -1,6 +1,6 @@
 import express from 'express';
 import { authenticate, authorize } from '../middleware/auth.js';
-import { assetFileUpload } from '../middleware/fileUpload.js';
+import { assetFileUpload, excelUpload } from '../middleware/fileUpload.js';
 import * as assetController from '../controllers/assetController.js';
 
 const router = express.Router();
@@ -186,7 +186,8 @@ router.get('/:id/file/:fileField/download',
 
 
 router.post('/bulk/import', 
-  authorize(['Admin']), 
+  authorize(['Admin', 'Manager']),
+  excelUpload,
   assetController.bulkImportAssets
 );
 

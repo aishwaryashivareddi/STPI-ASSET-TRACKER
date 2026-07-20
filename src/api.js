@@ -36,6 +36,7 @@ export const assets = {
   getById: (id) => api.get(`/assets/${id}`),
   create: (formData) => api.post('/assets', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
   bulkCreate: (data) => api.post('/assets/bulk/create', data),
+  bulkImport: (formData) => api.post('/assets/bulk/import', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
   update: (id, formData) => api.put(`/assets/${id}`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
   confirmTesting: (id, formData) => api.post(`/assets/${id}/testing`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
   delete: (id) => api.delete(`/assets/${id}`),

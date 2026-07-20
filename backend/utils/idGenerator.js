@@ -15,7 +15,7 @@ const ASSET_TYPE_CODES = {
  * Generate unique asset ID in format: [BRANCHCODE][DD/MM/YY][ASSETTYPE+SEQUENTIALNUMBER]
  * Example: HYD010125HD001
  */
-export const generateAssetId = async (branchId, assetType) => {
+export const generateAssetId = async (branchId, assetType, offset = 0) => {
   const branch = await Branch.findByPk(branchId);
   if (!branch) throw new Error('Branch not found');
 
@@ -41,10 +41,10 @@ export const generateAssetId = async (branchId, assetType) => {
     order: [['asset_id', 'DESC']]
   });
 
-  let sequentialNumber = 1;
+  let sequentialNumber = 1 + offset;
   if (lastAsset) {
     const lastSequence = parseInt(lastAsset.asset_id.slice(-3));
-    sequentialNumber = lastSequence + 1;
+    sequentialNumber = lastSequence + 1 + offset;
   }
 
   const assetId = `${prefix}${String(sequentialNumber).padStart(3, '0')}`;
