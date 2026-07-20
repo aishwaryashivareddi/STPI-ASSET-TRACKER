@@ -34,10 +34,26 @@ export const register = catchAsync(async (req, res, next) => {
 export const login = catchAsync(async (req, res, next) => {
   const { email, password } = req.body;
 
-  const user = await User.findOne({ where: { email, is_active: true } });
+  // Find user regardless of is_active to give specific messages
+  const user = await User.findOne({ where: { email } });
 
   if (!user) {
     return next(new AppError('Invalid credentials', 401));
+  }
+
+  // Pending approval — give specific message
+  if (user.registration_status === 'Pending') {
+    return next(new AppError('Your account is pending Admin approval. Please wait for activation.', 403));
+  }
+
+  // Rejected
+  if (user.registration_status === 'Rejected') {
+    return next(new AppError('Your registration was rejected. Please contact the Admin.', 403));
+  }
+
+  // Deactivated by admin
+  if (!user.is_active) {
+    return next(new AppError('Your account has been deactivated. Please contact the Admin.', 403));
   }
 
   const isValidPassword = await bcrypt.compare(password, user.password);

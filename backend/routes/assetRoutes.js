@@ -190,6 +190,11 @@ router.post('/bulk/import',
   assetController.bulkImportAssets
 );
 
+router.post('/bulk/create',
+  authorize(['Admin', 'Manager']),
+  assetController.bulkCreateAssets
+);
+
 
 router.delete('/:id', 
   authorize(['Admin']), 

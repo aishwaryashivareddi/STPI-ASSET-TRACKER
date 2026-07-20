@@ -35,6 +35,7 @@ export const assets = {
   getAll: (params) => api.get('/assets', { params }),
   getById: (id) => api.get(`/assets/${id}`),
   create: (formData) => api.post('/assets', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  bulkCreate: (data) => api.post('/assets/bulk/create', data),
   update: (id, formData) => api.put(`/assets/${id}`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
   confirmTesting: (id, formData) => api.post(`/assets/${id}/testing`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
   delete: (id) => api.delete(`/assets/${id}`),
@@ -80,8 +81,13 @@ export const gatewayPasses = {
 
 export const users = {
   getAll: () => api.get('/users'),
+  getPending: () => api.get('/users/pending'),
+  getRejected: () => api.get('/users/rejected'),
+  selfRegister: (data) => api.post('/users/self-register', data),
   create: (data) => api.post('/users', data),
   update: (id, data) => api.put(`/users/${id}`, data),
+  approve: (id) => api.post(`/users/${id}/approve`),
+  reject: (id) => api.post(`/users/${id}/reject`),
   resetPassword: (id, password) => api.post(`/users/${id}/reset-password`, { password }),
   delete: (id) => api.delete(`/users/${id}`)
 };

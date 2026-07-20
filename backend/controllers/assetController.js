@@ -1,5 +1,6 @@
 import { Asset, Branch, Supplier, User } from '../models/index.js';
 import { Op } from 'sequelize';
+import sequelize from '../config/sequelize.js';
 import { generateAssetId } from '../utils/idGenerator.js';
 import { getFilePaths, deleteFile } from '../middleware/fileUpload.js';
 import catchAsync from '../utils/catchAsync.js';
@@ -280,6 +281,36 @@ export const downloadAssetFile = catchAsync(async (req, res) => {
   const filePath = asset[fileField];
   const fileName = filePath.split(/[\\/]/).pop();
   res.download(filePath, fileName);
+});
+
+// Bulk create assets with transaction
+export const bulkCreateAssets = catchAsync(async (req, res) => {
+  const { branch_id, asset_type, quantity, ...commonData } = req.body;
+  const qty = parseInt(quantity);
+
+  if (!qty || qty < 2 || qty > 500) throw new AppError('Quantity must be between 2 and 500', 400);
+
+  const cleanedData = { ...commonData };
+  ['supplier_id', 'location', 'po_number', 'purchase_value'].forEach(field => {
+    if (cleanedData[field] === '' || cleanedData[field] === undefined) cleanedData[field] = null;
+  });
+
+  const t = await sequelize.transaction();
+  try {
+    const createdAssets = [];
+    for (let i = 0; i < qty; i++) {
+      const asset_id = await generateAssetId(branch_id, asset_type);
+      const asset = await Asset.create({
+        ...cleanedData, asset_id, branch_id, asset_type, created_by: req.user.id
+      }, { transaction: t });
+      createdAssets.push(asset);
+    }
+    await t.commit();
+    ApiResponse.created(res, { count: createdAssets.length, asset_ids: createdAssets.map(a => a.asset_id) }, `${qty} assets created successfully`);
+  } catch (err) {
+    await t.rollback();
+    throw err;
+  }
 });
 
 // Bulk import assets

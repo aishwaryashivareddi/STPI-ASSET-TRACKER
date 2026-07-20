@@ -12,6 +12,10 @@ const User = sequelize.define('User', {
     allowNull: false,
     unique: true
   },
+  full_name: {
+    type: DataTypes.STRING(100),
+    allowNull: true
+  },
   email: {
     type: DataTypes.STRING(100),
     allowNull: false,
@@ -27,10 +31,11 @@ const User = sequelize.define('User', {
   },
   branch_id: {
     type: DataTypes.INTEGER,
-    references: {
-      model: 'branches',
-      key: 'id'
-    }
+    references: { model: 'branches', key: 'id' }
+  },
+  department: {
+    type: DataTypes.STRING(100),
+    allowNull: true
   },
   reset_token: {
     type: DataTypes.STRING(255),
@@ -43,6 +48,10 @@ const User = sequelize.define('User', {
   is_active: {
     type: DataTypes.BOOLEAN,
     defaultValue: true
+  },
+  registration_status: {
+    type: DataTypes.STRING(20),
+    defaultValue: 'Approved'
   }
 }, {
   tableName: 'users',

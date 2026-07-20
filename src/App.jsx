@@ -12,6 +12,7 @@ import GatewayPasses from './GatewayPasses';
 import UserManagement from './UserManagement';
 import ForgotPassword from './ForgotPassword';
 import ResetPassword from './ResetPassword';
+import QRScanner from './QRScanner';
 
 export default function App() {
   return (
@@ -29,6 +30,7 @@ export default function App() {
             <Route path="/disposals" element={<ProtectedRoute><Disposals /></ProtectedRoute>} />
             <Route path="/gateway-passes" element={<ProtectedRoute><GatewayPasses /></ProtectedRoute>} />
             <Route path="/users" element={<ProtectedRoute adminOnly><UserManagement /></ProtectedRoute>} />
+            <Route path="/qr-scanner" element={<ProtectedRoute><QRScanner /></ProtectedRoute>} />
           </Routes>
         </BrowserRouter>
       </ToastProvider>

@@ -5,6 +5,7 @@ import { validateFile } from './utils/fileValidation';
 import Pagination from './components/Pagination';
 import { useToast } from './components/Toast';
 import SearchableSelect from './components/SearchableSelect';
+import { AssetQRModal, BulkQRPrint } from './components/AssetQR';
 
 export default function Assets() {
   const [assetList, setAssetList] = useState([]);
@@ -15,6 +16,9 @@ export default function Assets() {
   const [showBranchForm, setShowBranchForm] = useState(false);
   const [showSupplierForm, setShowSupplierForm] = useState(false);
   const [showFilesModal, setShowFilesModal] = useState(null);
+  const [showQRModal, setShowQRModal] = useState(null);
+  const [selectedAssets, setSelectedAssets] = useState([]);
+  const [showBulkQR, setShowBulkQR] = useState(false);
   const [editingAsset, setEditingAsset] = useState(null);
   const [loading, setLoading] = useState(false);
   const [filters, setFilters] = useState({ asset_type: '', current_status: '' });
@@ -90,6 +94,26 @@ export default function Assets() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const qty = parseInt(formData.quantity) || 1;
+
+    // Bulk create — quantity > 1, not editing
+    if (!editingAsset && qty > 1) {
+      const hasFiles = Object.values(files).some(Boolean);
+      if (hasFiles && !window.confirm(`Files cannot be attached during bulk creation. ${qty} assets will be created without files. Continue?`)) return;
+      try {
+        const res = await assets.bulkCreate(formData);
+        toast(`${res.data.data.count} assets created: ${res.data.data.asset_ids.slice(0, 3).join(', ')}${res.data.data.count > 3 ? '...' : ''}`);
+        setShowForm(false);
+        setFormData({ name: '', asset_type: 'COMPUTER', branch_id: '', quantity: 1, location: '', purchase_value: '', po_number: '', supplier_id: '', serial_number: '' });
+        setFiles({});
+        loadData();
+      } catch (err) {
+        toast('Failed to bulk create: ' + (err.response?.data?.message || err.message), 'error');
+      }
+      return;
+    }
+
+    // Single create or edit
     const data = new FormData();
     Object.keys(formData).forEach(key => data.append(key, formData[key]));
     Object.keys(files).forEach(key => {
@@ -110,7 +134,7 @@ export default function Assets() {
       setFiles({});
       loadData();
     } catch (err) {
-      alert('Failed to save asset: ' + (err.response?.data?.message || err.message));
+      toast('Failed to save asset: ' + (err.response?.data?.message || err.message), 'error');
     }
   };
 
@@ -213,6 +237,16 @@ export default function Assets() {
 
   const isImage = (filePath) => /\.(jpg|jpeg|png|gif)$/i.test(filePath);
 
+  const toggleSelect = (asset) => {
+    setSelectedAssets(prev =>
+      prev.find(a => a.id === asset.id) ? prev.filter(a => a.id !== asset.id) : [...prev, asset]
+    );
+  };
+
+  const toggleSelectAll = () => {
+    setSelectedAssets(prev => prev.length === assetList.length ? [] : [...assetList]);
+  };
+
   const canConfirmTesting = user?.role === 'Admin' || user?.role === 'Manager';
   const canDelete = user?.role === 'Admin';
   const canCreateBranch = user?.role === 'Admin';
@@ -224,6 +258,10 @@ export default function Assets() {
         <h1>Assets Management</h1>
         <div>
           <button onClick={() => navigate('/dashboard')}>← Back</button>
+          {selectedAssets.length > 0 && (
+            <button onClick={() => setShowBulkQR(true)} style={{ marginRight: '8px', background: 'linear-gradient(135deg, #805ad5, #6b46c1)', color: 'white', border: 'none', borderRadius: '8px', padding: '10px 16px', cursor: 'pointer', fontWeight: 600 }}>🖨 Bulk QR ({selectedAssets.length})</button>
+          )}
+          <button onClick={() => navigate('/qr-scanner')} style={{ marginRight: '8px', background: 'linear-gradient(135deg, #dd6b20, #c05621)', color: 'white', border: 'none', borderRadius: '8px', padding: '10px 16px', cursor: 'pointer', fontWeight: 600 }}>📷 Scan QR</button>
           <button onClick={() => setShowForm(true)} className="btn-primary">+ Add Asset</button>
         </div>
       </header>
@@ -266,6 +304,9 @@ export default function Assets() {
         <table>
           <thead>
             <tr>
+              <th style={{ width: '40px' }}>
+                <input type="checkbox" checked={selectedAssets.length === assetList.length && assetList.length > 0} onChange={toggleSelectAll} />
+              </th>
               <th onClick={() => { setSortBy('asset_id'); setSortOrder(sortOrder === 'ASC' ? 'DESC' : 'ASC'); }} style={{ cursor: 'pointer' }}>
                 Asset ID {sortBy === 'asset_id' && (sortOrder === 'ASC' ? '↑' : '↓')}
               </th>
@@ -290,9 +331,10 @@ export default function Assets() {
           </thead>
           <tbody>
             {assetList.length === 0 ? (
-              <tr><td colSpan="10" style={{ textAlign: 'center', padding: '40px', color: '#718096' }}>No assets found</td></tr>
+              <tr><td colSpan="11" style={{ textAlign: 'center', padding: '40px', color: '#718096' }}>No assets found</td></tr>
             ) : assetList.map((asset) => (
               <tr key={asset.id}>
+                <td><input type="checkbox" checked={!!selectedAssets.find(a => a.id === asset.id)} onChange={() => toggleSelect(asset)} /></td>
                 <td>{asset.asset_id}</td>
                 <td>{asset.name}</td>
                 <td>{asset.asset_type}</td>
@@ -303,6 +345,7 @@ export default function Assets() {
                 <td><span className={`badge ${asset.testing_status.toLowerCase()}`}>{asset.testing_status}</span></td>
                 <td>₹{asset.purchase_value?.toLocaleString()}</td>
                 <td>
+                  <button onClick={() => setShowQRModal(asset)} className="btn-sm" style={{ marginRight: '8px', background: 'linear-gradient(135deg, #805ad5, #6b46c1)' }}>QR</button>
                   {(asset.invoice_file || asset.po_file || asset.dc_file || asset.testing_report_file) && (
                     <button onClick={() => setShowFilesModal(asset)} className="btn-sm" style={{ marginRight: '8px', background: 'linear-gradient(135deg, #3182ce, #2b6cb0)' }}>📎 Files</button>
                   )}
@@ -362,8 +405,8 @@ export default function Assets() {
                   />
                 </div>
                 <div className="form-group">
-                  <label>Quantity</label>
-                  <input type="number" value={formData.quantity} onChange={(e) => setFormData({ ...formData, quantity: e.target.value })} />
+                  <label>Quantity {!editingAsset && parseInt(formData.quantity) > 1 && <span style={{ color: '#805ad5', fontSize: '12px' }}>— Bulk: {formData.quantity} assets will be created</span>}</label>
+                  <input type="number" min="1" max="500" value={formData.quantity} onChange={(e) => setFormData({ ...formData, quantity: e.target.value })} />
                 </div>
               </div>
               <div className="form-row">
@@ -554,6 +597,8 @@ export default function Assets() {
           </div>
         </div>
       )}
+      {showQRModal && <AssetQRModal asset={showQRModal} onClose={() => setShowQRModal(null)} />}
+      {showBulkQR && <BulkQRPrint selectedAssets={selectedAssets} onClose={() => setShowBulkQR(false)} />}
     </div>
   );
 }

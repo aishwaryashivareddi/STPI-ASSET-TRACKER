@@ -23,7 +23,7 @@ const getTransporter = () => {
 };
 
 export const sendMaintenanceNotification = async (asset, maintenance, requestedBy) => {
-  const deptEmail = DEPARTMENT_EMAILS[asset.asset_type] || 'admin@stpi.in';
+  const toEmail = process.env.MAINTENANCE_NOTIFY_EMAIL || 'aishwaryashivareddi09@gmail.com';
   const scheduledDate = new Date(maintenance.scheduled_date).toLocaleDateString('en-IN');
 
   const subject = `Maintenance Scheduled for Asset ${asset.asset_id}`;
@@ -53,15 +53,15 @@ export const sendMaintenanceNotification = async (asset, maintenance, requestedB
     try {
       await transporter.sendMail({
         from: process.env.SMTP_FROM || 'noreply@stpi.in',
-        to: deptEmail,
+        to: toEmail,
         subject,
         html
       });
-      logger.info(`Maintenance notification sent to ${deptEmail} for asset ${asset.asset_id}`);
+      logger.info(`Maintenance notification sent to ${toEmail} for asset ${asset.asset_id}`);
     } catch (err) {
       logger.error(`Failed to send maintenance email: ${err.message}`);
     }
   } else {
-    logger.info(`[DEV] Maintenance notification (no SMTP configured):\n  To: ${deptEmail}\n  Subject: ${subject}\n  Asset: ${asset.asset_id} - ${asset.name}\n  Type: ${maintenance.maintenance_type}\n  Date: ${scheduledDate}\n  Requested By: ${requestedBy}`);
+    logger.info(`[DEV] Maintenance notification (no SMTP configured):\n  To: ${toEmail}\n  Subject: ${subject}\n  Asset: ${asset.asset_id} - ${asset.name}\n  Type: ${maintenance.maintenance_type}\n  Date: ${scheduledDate}\n  Requested By: ${requestedBy}`);;
   }
 };
