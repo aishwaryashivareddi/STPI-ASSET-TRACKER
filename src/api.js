@@ -35,12 +35,13 @@ export const assets = {
   getAll: (params) => api.get('/assets', { params }),
   getById: (id) => api.get(`/assets/${id}`),
   create: (formData) => api.post('/assets', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
-  bulkCreate: (data) => api.post('/assets/bulk/create', data),
+  bulkCreate: (formData) => api.post('/assets/bulk/create', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
   bulkImport: (formData) => api.post('/assets/bulk/import', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
   update: (id, formData) => api.put(`/assets/${id}`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
   confirmTesting: (id, formData) => api.post(`/assets/${id}/testing`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
   delete: (id) => api.delete(`/assets/${id}`),
   deleteFile: (id, fileField) => api.delete(`/assets/${id}/file/${fileField}`),
+  downloadFile: (id, fileField) => api.get(`/assets/${id}/file/${fileField}/download`, { responseType: 'blob' }),
   getStats: () => api.get('/assets/stats')
 };
 
@@ -75,8 +76,13 @@ export const master = {
 
 export const gatewayPasses = {
   getAll: (params) => api.get('/gateway-passes', { params }),
+  getById: (id) => api.get(`/gateway-passes/${id}`),
   create: (data) => api.post('/gateway-passes', data),
+  update: (id, data) => api.put(`/gateway-passes/${id}`, data),
   downloadPDF: (id) => api.get(`/gateway-passes/${id}/download-pdf`, { responseType: 'blob' }),
+  uploadSignedCopy: (id, formData) => api.post(`/gateway-passes/${id}/upload-signed`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  downloadSignedCopy: (id) => api.get(`/gateway-passes/${id}/download-signed`, { responseType: 'blob' }),
+  deleteSignedCopy: (id) => api.delete(`/gateway-passes/${id}/signed-copy`),
   delete: (id) => api.delete(`/gateway-passes/${id}`)
 };
 

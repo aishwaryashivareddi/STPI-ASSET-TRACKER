@@ -24,9 +24,11 @@ export default function BulkAssetCreate() {
     name: '', asset_type: 'FURNITURE', branch_id: '', quantity: 2,
     location: '', purchase_value: '', po_number: '', supplier_id: '', warranty_expiry: ''
   });
+  const [files, setFiles] = useState({ invoice_file: null, po_file: null });
 
   // Import tab state
   const [importFile, setImportFile] = useState(null);
+  const [importFiles, setImportFiles] = useState({ invoice_file: null, po_file: null });
   const [importErrors, setImportErrors] = useState([]);
   const fileInputRef = useRef();
 
@@ -47,7 +49,11 @@ export default function BulkAssetCreate() {
 
     setLoading(true);
     try {
-      const res = await assets.bulkCreate(form);
+      const formData = new FormData();
+      Object.keys(form).forEach(key => formData.append(key, form[key]));
+      if (files.invoice_file) formData.append('invoice_file', files.invoice_file);
+      if (files.po_file) formData.append('po_file', files.po_file);
+      const res = await assets.bulkCreate(formData);
       const { count, asset_ids } = res.data.data;
       setResult({ count, asset_ids, errors: [] });
       toast(`${count} assets created successfully`);
@@ -65,6 +71,8 @@ export default function BulkAssetCreate() {
 
     const formData = new FormData();
     formData.append('file', importFile);
+    if (importFiles.invoice_file) formData.append('invoice_file', importFiles.invoice_file);
+    if (importFiles.po_file) formData.append('po_file', importFiles.po_file);
 
     setLoading(true);
     try {
@@ -240,8 +248,17 @@ export default function BulkAssetCreate() {
                 <input type="date" value={form.warranty_expiry} onChange={e => setForm({ ...form, warranty_expiry: e.target.value })} />
               </div>
             </div>
-            <div style={{ background: '#fffbeb', border: '1px solid #f6e05e', borderRadius: '8px', padding: '12px', marginBottom: '20px', fontSize: '13px', color: '#744210' }}>
-              ⚠ File attachments (Invoice, PO, DC) are not supported during bulk creation. You can attach files individually after creation.
+            <div className="form-row">
+              <div className="form-group">
+                <label>Invoice File</label>
+                <input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={e => setFiles({ ...files, invoice_file: e.target.files[0] || null })} />
+                {files.invoice_file && <div style={{ fontSize: '12px', color: '#38a169', marginTop: '4px' }}>✓ {files.invoice_file.name}</div>}
+              </div>
+              <div className="form-group">
+                <label>PO File</label>
+                <input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={e => setFiles({ ...files, po_file: e.target.files[0] || null })} />
+                {files.po_file && <div style={{ fontSize: '12px', color: '#38a169', marginTop: '4px' }}>✓ {files.po_file.name}</div>}
+              </div>
             </div>
             <div className="form-actions">
               <button type="button" onClick={() => navigate('/assets')}>Cancel</button>
@@ -299,6 +316,18 @@ export default function BulkAssetCreate() {
                   ✓ {importFile.name} ({(importFile.size / 1024).toFixed(1)} KB)
                 </div>
               )}
+            </div>
+            <div className="form-row">
+              <div className="form-group">
+                <label>Invoice File</label>
+                <input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={e => setImportFiles({ ...importFiles, invoice_file: e.target.files[0] || null })} />
+                {importFiles.invoice_file && <div style={{ fontSize: '12px', color: '#38a169', marginTop: '4px' }}>✓ {importFiles.invoice_file.name}</div>}
+              </div>
+              <div className="form-group">
+                <label>PO File</label>
+                <input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={e => setImportFiles({ ...importFiles, po_file: e.target.files[0] || null })} />
+                {importFiles.po_file && <div style={{ fontSize: '12px', color: '#38a169', marginTop: '4px' }}>✓ {importFiles.po_file.name}</div>}
+              </div>
             </div>
 
             {importErrors.length > 0 && (

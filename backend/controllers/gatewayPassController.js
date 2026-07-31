@@ -1,6 +1,7 @@
 import { GatewayPass, Asset, Branch, User } from '../models/index.js';
 import { Op } from 'sequelize';
 import { generateGatewayPassId } from '../utils/idGenerator.js';
+import { getFilePaths, deleteFile } from '../middleware/fileUpload.js';
 import catchAsync from '../utils/catchAsync.js';
 import ApiResponse from '../utils/ApiResponse.js';
 import AppError from '../utils/AppError.js';
@@ -95,27 +96,24 @@ export const downloadGatewayPassPDF = catchAsync(async (req, res) => {
   res.setHeader('Content-Disposition', `attachment; filename=GatePass_${gp.gateway_pass_id}.pdf`);
   doc.pipe(res);
 
-  // Logo
+  // Logo - left aligned
   const logoPath = path.join(__dirname, '..', '..', 'public', 'stpi-logo.png');
-  try { doc.image(logoPath, 50, 40, { width: 50 }); } catch (e) {}
+  try { doc.image(logoPath, 50, 40, { width: 100, fit: [100, 70] }); } catch (e) {}
 
-  // Header
-  doc.font('Helvetica-Bold').fontSize(14)
-    .text('Software Technology Parks of India', 110, 45, { align: 'center' });
-  doc.font('Helvetica').fontSize(9)
-    .text('(An Autonomous Society under Ministry of Electronics and Information Technology, Govt. of India)', 110, 63, { align: 'center' });
-  doc.fontSize(10)
-    .text('6Q3, 6th Floor, Cyber Towers, HITEC City, Madhapur, Hyderabad-500 081.', 110, 76, { align: 'center' });
+  // Header text - starts after logo (x=160), centered in remaining space
+  doc.font('Helvetica-Bold').fontSize(13)
+    .text('Software Technology Parks of India', 160, 42, { width: 335, align: 'center' });
+  doc.font('Helvetica').fontSize(8)
+    .text('(An Autonomous Society under Ministry of Electronics and Information Technology, Govt. of India)', 160, 62, { width: 335, align: 'center' });
+  doc.fontSize(9)
+    .text('6Q3, 6th Floor, Cyber Towers, HITEC City, Madhapur, Hyderabad-500 081.', 160, 78, { width: 335, align: 'center' });
 
-  // Line separator
-  doc.moveTo(50, 95).lineTo(545, 95).stroke();
-
-  // Gate Pass title
-  doc.font('Helvetica-Bold').fontSize(16)
-    .text('GATE PASS', 0, 105, { align: 'center' });
+  // Gate Pass title - full width centered
+  doc.font('Helvetica-Bold').fontSize(15)
+    .text('GATE PASS', 50, 125, { width: 495, align: 'center' });
 
   // Meta info
-  const y1 = 135;
+  const y1 = 155;
   doc.font('Helvetica').fontSize(10);
   doc.text(`Sl.No.: ${gp.gateway_pass_id}`, 50, y1);
   doc.text(`Date: ${new Date(gp.transfer_date).toLocaleDateString('en-IN')}`, 400, y1);
@@ -128,7 +126,7 @@ export const downloadGatewayPassPDF = catchAsync(async (req, res) => {
 
   y += 25;
   doc.font('Helvetica').text(`2. Name/Organisation: `, 50, y, { continued: true })
-    .font('Helvetica-Bold').text(`${gp.fromBranch?.name || ''} → ${gp.toBranch?.name || ''}`);
+    .font('Helvetica-Bold').text(`${gp.fromBranch?.name || ''} -> ${gp.toBranch?.name || ''}`);
 
   y += 25;
   doc.font('Helvetica').text('3. These items will be returned / ', 50, y, { continued: true })
@@ -179,6 +177,57 @@ export const downloadGatewayPassPDF = catchAsync(async (req, res) => {
     .text('*Strike out which is not applicable', 50, y);
 
   doc.end();
+});
+
+// Get single gateway pass
+export const getGatewayPassById = catchAsync(async (req, res) => {
+  const gp = await GatewayPass.findByPk(req.params.id, { include: GP_INCLUDES });
+  if (!gp) throw new AppError('Gateway pass not found', 404);
+  ApiResponse.success(res, gp);
+});
+
+// Update gateway pass
+export const updateGatewayPass = catchAsync(async (req, res) => {
+  const gp = await GatewayPass.findByPk(req.params.id);
+  if (!gp) throw new AppError('Gateway pass not found', 404);
+  await gp.update(req.body);
+  const result = await GatewayPass.findByPk(gp.id, { include: GP_INCLUDES });
+  ApiResponse.success(res, result, 'Gateway pass updated');
+});
+
+// Upload signed copy
+export const uploadSignedCopy = catchAsync(async (req, res) => {
+  const gp = await GatewayPass.findByPk(req.params.id);
+  if (!gp) throw new AppError('Gateway pass not found', 404);
+
+  if (!req.files?.signed_copy) throw new AppError('No file uploaded', 400);
+
+  // Delete old file if exists
+  if (gp.signed_copy) deleteFile(gp.signed_copy);
+
+  await gp.update({ signed_copy: req.files.signed_copy[0].path });
+  ApiResponse.success(res, gp, 'Signed copy uploaded successfully');
+});
+
+// Delete signed copy
+export const deleteSignedCopy = catchAsync(async (req, res) => {
+  const gp = await GatewayPass.findByPk(req.params.id);
+  if (!gp) throw new AppError('Gateway pass not found', 404);
+  if (!gp.signed_copy) throw new AppError('No signed copy to delete', 404);
+
+  deleteFile(gp.signed_copy);
+  await gp.update({ signed_copy: null });
+  ApiResponse.success(res, null, 'Signed copy deleted');
+});
+
+// Download signed copy
+export const downloadSignedCopy = catchAsync(async (req, res) => {
+  const gp = await GatewayPass.findByPk(req.params.id);
+  if (!gp) throw new AppError('Gateway pass not found', 404);
+  if (!gp.signed_copy) throw new AppError('No signed copy found', 404);
+
+  const fileName = gp.signed_copy.split(/[\\/]/).pop();
+  res.download(gp.signed_copy, fileName);
 });
 
 // Delete gateway pass (Admin only)

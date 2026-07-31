@@ -1,0 +1,35 @@
+﻿            <h2>Edit Gateway Pass â€” {showEditModal.gateway_pass_id}</h2>
+            <form onSubmit={handleEditSubmit}>
+              <div className="form-group">
+                <label>Transfer Date *</label>
+                <input type="date" value={editData.transfer_date} onChange={(e) => setEditData({ ...editData, transfer_date: e.target.value })} required />
+              </div>
+              <div className="form-group">
+                <label>Reason *</label>
+                <textarea value={editData.reason} onChange={(e) => setEditData({ ...editData, reason: e.target.value })} rows="3" required />
+              </div>
+              <div className="form-group">
+                <label>Pass Through Person</label>
+                <input value={editData.pass_through_person} onChange={(e) => setEditData({ ...editData, pass_through_person: e.target.value })} />
+              </div>
+              <div className="form-group">
+                <label>Prepared By</label>
+                <input value={editData.prepared_by_person} onChange={(e) => setEditData({ ...editData, prepared_by_person: e.target.value })} />
+              </div>
+              <div className="form-group">
+                <label>Authorized By</label>
+                <input value={editData.authorized_by_person} onChange={(e) => setEditData({ ...editData, authorized_by_person: e.target.value })} />
+              </div>
+              <div className="form-group">
+                <label>Received By</label>
+                <input value={editData.received_by_person} onChange={(e) => setEditData({ ...editData, received_by_person: e.target.value })} />
+              </div>
+              <div className="form-actions">
+                <button type="button" onClick={() => setShowEditModal(null)}>Cancel</button>
+                <button type="submit" className="btn-primary">Update</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+

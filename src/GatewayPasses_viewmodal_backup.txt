@@ -1,0 +1,64 @@
+      {showViewModal && (
+        <div className="modal">
+          <div className="modal-content">
+            <h2>📎 Gateway Pass — {showViewModal.gateway_pass_id}</h2>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px', marginBottom: '16px' }}>
+              <tbody>
+                {[
+                  ['Pass ID', showViewModal.gateway_pass_id],
+                  ['Asset', `${showViewModal.asset?.name} (${showViewModal.asset?.asset_id})`],
+                  ['From Branch', showViewModal.fromBranch?.name],
+                  ['To Branch', showViewModal.toBranch?.name],
+                  ['Transfer Date', new Date(showViewModal.transfer_date).toLocaleDateString('en-IN')],
+                  ['Reason', showViewModal.reason],
+                  ['Pass Through', showViewModal.pass_through_person],
+                  ['Prepared By', showViewModal.prepared_by_person],
+                  ['Authorized By', showViewModal.authorized_by_person],
+                  ['Received By', showViewModal.received_by_person],
+                ].map(([label, value]) => (
+                  <tr key={label} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                    <td style={{ padding: '8px 10px', fontWeight: '600', color: '#4a5568', width: '40%' }}>{label}</td>
+                    <td style={{ padding: '8px 10px', color: '#2d3748' }}>{value || '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            {/* Signed Copy Section */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {showViewModal.signed_copy ? (
+                <div style={{ border: '2px solid #e2e8f0', borderRadius: '10px', overflow: 'hidden' }}>
+                  <div style={{ padding: '12px 18px', background: '#f7fafc', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #e2e8f0' }}>
+                    <span style={{ fontWeight: 700, color: '#2d3748' }}>📄 Signed Copy</span>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <a href={getSignedCopyUrl(showViewModal.signed_copy)} target="_blank" rel="noopener noreferrer" style={{ padding: '6px 14px', background: '#667eea', color: 'white', borderRadius: '6px', textDecoration: 'none', fontSize: '12px', fontWeight: 600 }}>View</a>
+                      <button onClick={() => handleDownloadSignedCopy(showViewModal)} style={{ padding: '6px 14px', background: '#38a169', color: 'white', borderRadius: '6px', border: 'none', fontSize: '12px', fontWeight: 600, cursor: 'pointer', width: 'auto' }}>Download</button>
+                      <button onClick={() => { handleDeleteSignedCopy(showViewModal); setShowViewModal(null); }} style={{ padding: '6px 14px', background: '#e53e3e', color: 'white', borderRadius: '6px', border: 'none', fontSize: '12px', fontWeight: 600, cursor: 'pointer', width: 'auto' }}>Delete</button>
+                    </div>
+                  </div>
+                  <div style={{ padding: '12px', background: 'white', maxHeight: '300px', overflow: 'auto' }}>
+                    {/\.(jpg|jpeg|png|gif)$/i.test(showViewModal.signed_copy) ? (
+                      <img src={getSignedCopyUrl(showViewModal.signed_copy)} alt="Signed Copy" style={{ maxWidth: '100%', borderRadius: '6px' }} />
+                    ) : (
+                      <iframe src={getSignedCopyUrl(showViewModal.signed_copy)} title="Signed Copy" style={{ width: '100%', height: '280px', border: 'none', borderRadius: '6px' }} />
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div style={{ padding: '16px', background: '#fffbeb', borderRadius: '8px', border: '1px solid #f6e05e', color: '#744210', fontSize: '13px' }}>
+                  ⚠️ No signed copy uploaded yet.
+                  <button onClick={() => { setShowViewModal(null); setShowUploadModal(showViewModal); }} style={{ marginLeft: '12px', padding: '4px 12px', background: '#805ad5', color: 'white', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', width: 'auto' }}>Upload Now</button>
+                </div>
+              )}
+            </div>
+
+            <div className="form-actions">
+              <button onClick={() => setShowViewModal(null)}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showEditModal && (
+        <div className="modal">
+          <div className="modal-content">

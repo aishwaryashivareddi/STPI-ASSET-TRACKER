@@ -12,7 +12,7 @@ export const getAllUsers = catchAsync(async (req, res) => {
     where: { registration_status: 'Approved' },
     attributes: USER_ATTRIBUTES,
     include: BRANCH_INCLUDE,
-    order: [['createdAt', 'DESC']]
+    order: [['created_at', 'DESC']]
   });
   ApiResponse.success(res, users);
 });
@@ -22,7 +22,7 @@ export const getPendingUsers = catchAsync(async (req, res) => {
     where: { registration_status: 'Pending' },
     attributes: USER_ATTRIBUTES,
     include: BRANCH_INCLUDE,
-    order: [['createdAt', 'DESC']]
+    order: [['created_at', 'DESC']]
   });
   ApiResponse.success(res, users);
 });
@@ -32,7 +32,7 @@ export const getRejectedUsers = catchAsync(async (req, res) => {
     where: { registration_status: 'Rejected' },
     attributes: USER_ATTRIBUTES,
     include: BRANCH_INCLUDE,
-    order: [['updatedAt', 'DESC']]
+    order: [['updated_at', 'DESC']]
   });
   ApiResponse.success(res, users);
 });

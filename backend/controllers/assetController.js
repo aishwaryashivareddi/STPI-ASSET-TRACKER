@@ -296,13 +296,16 @@ export const bulkCreateAssets = catchAsync(async (req, res) => {
     if (cleanedData[field] === '' || cleanedData[field] === undefined) cleanedData[field] = null;
   });
 
+  // Get uploaded file paths (same file shared across all assets)
+  const filePaths = getFilePaths(req);
+
   const t = await sequelize.transaction();
   try {
     const createdAssets = [];
     for (let i = 0; i < qty; i++) {
       const asset_id = await generateAssetId(branch_id, asset_type, i);
       const asset = await Asset.create({
-        ...cleanedData, asset_id, branch_id, asset_type, created_by: req.user.id
+        ...cleanedData, ...filePaths, asset_id, branch_id, asset_type, created_by: req.user.id
       }, { transaction: t });
       createdAssets.push(asset);
     }
@@ -316,19 +319,23 @@ export const bulkCreateAssets = catchAsync(async (req, res) => {
 
 // Bulk import assets from Excel/CSV file
 export const bulkImportAssets = catchAsync(async (req, res) => {
-  if (!req.file) throw new AppError('No file uploaded', 400);
+  if (!req.files?.file?.[0]) throw new AppError('No file uploaded', 400);
 
-  const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+  const workbook = XLSX.read(req.files.file[0].buffer, { type: 'buffer' });
   const sheet = workbook.Sheets[workbook.SheetNames[0]];
   const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
 
   if (!rows.length) throw new AppError('File is empty or has no data rows', 400);
 
-  // Validate required columns
   const required = ['name', 'asset_type', 'branch_id'];
   const headers = Object.keys(rows[0]).map(k => k.toLowerCase().trim());
   const missing = required.filter(r => !headers.includes(r));
   if (missing.length) throw new AppError(`Missing required columns: ${missing.join(', ')}`, 400);
+
+  // Build shared file paths from uploaded invoice/PO files
+  const filePaths = {};
+  if (req.files?.invoice_file?.[0]) filePaths.invoice_file = req.files.invoice_file[0].path;
+  if (req.files?.po_file?.[0]) filePaths.po_file = req.files.po_file[0].path;
 
   const VALID_TYPES = ['HSDC', 'COMPUTER', 'ELECTRICAL', 'OFFICE', 'FURNITURE', 'FIREFIGHTING', 'BUILDING'];
 
@@ -338,7 +345,6 @@ export const bulkImportAssets = catchAsync(async (req, res) => {
 
   try {
     for (let i = 0; i < rows.length; i++) {
-      // Normalize keys to lowercase
       const raw = Object.fromEntries(Object.entries(rows[i]).map(([k, v]) => [k.toLowerCase().trim(), v]));
 
       const asset_type = String(raw.asset_type || '').toUpperCase().trim();
@@ -356,15 +362,14 @@ export const bulkImportAssets = catchAsync(async (req, res) => {
       const asset_id = await generateAssetId(branch_id, asset_type, createdAssets.length);
       const asset = await Asset.create({
         name: String(raw.name).trim(),
-        asset_type,
-        branch_id,
-        asset_id,
+        asset_type, branch_id, asset_id,
         location: raw.location || null,
         purchase_value: raw.purchase_value ? parseFloat(raw.purchase_value) : null,
         po_number: raw.po_number || null,
         serial_number: raw.serial_number || null,
         supplier_id: raw.supplier_id ? parseInt(raw.supplier_id) : null,
         warranty_expiry: raw.warranty_expiry || null,
+        ...filePaths,
         created_by: req.user.id
       }, { transaction: t });
       createdAssets.push(asset);
@@ -378,10 +383,6 @@ export const bulkImportAssets = catchAsync(async (req, res) => {
   res.status(201).json({
     success: true,
     message: `${createdAssets.length} assets imported successfully${errors.length ? `, ${errors.length} rows skipped` : ''}`,
-    data: {
-      count: createdAssets.length,
-      asset_ids: createdAssets.map(a => a.asset_id),
-      errors
-    }
+    data: { count: createdAssets.length, asset_ids: createdAssets.map(a => a.asset_id), errors }
   });
 });

@@ -210,6 +210,26 @@ export default function Assets() {
     }
   };
 
+  const handleDownloadFile = async (assetId, fileField, label) => {
+    try {
+      const res = await assets.downloadFile(assetId, fileField);
+      const contentType = res.headers['content-type'] || 'application/octet-stream';
+      const url = window.URL.createObjectURL(new Blob([res.data], { type: contentType }));
+      const a = document.createElement('a');
+      a.href = url;
+      // Get original filename from content-disposition header or fallback
+      const disposition = res.headers['content-disposition'];
+      const filename = disposition
+        ? disposition.split('filename=')[1]?.replace(/"/g, '')
+        : `${label}_${assetId}.${contentType.includes('pdf') ? 'pdf' : contentType.split('/')[1] || 'bin'}`;
+      a.download = filename;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      toast('Failed to download file', 'error');
+    }
+  };
+
   const getFileUrl = (filePath) => {
     const p = filePath.replace(/\\/g, '/');
     const rel = p.includes('uploads/') ? p.substring(p.indexOf('uploads/')) : p;
@@ -551,7 +571,7 @@ export default function Assets() {
                         <span style={{ fontWeight: 700, color: '#2d3748' }}>📄 {f.label}</span>
                         <div style={{ display: 'flex', gap: '8px' }}>
                           <a href={url} target="_blank" rel="noopener noreferrer" style={{ padding: '6px 14px', background: '#667eea', color: 'white', borderRadius: '6px', textDecoration: 'none', fontSize: '12px', fontWeight: 600 }}>View</a>
-                          <a href={`http://localhost:5000/api/assets/${showFilesModal.id}/file/${f.key}/download`} style={{ padding: '6px 14px', background: '#38a169', color: 'white', borderRadius: '6px', textDecoration: 'none', fontSize: '12px', fontWeight: 600 }}>Download</a>
+                          <button onClick={() => handleDownloadFile(showFilesModal.id, f.key, f.label)} style={{ padding: '6px 14px', background: '#38a169', color: 'white', borderRadius: '6px', border: 'none', fontSize: '12px', fontWeight: 600, cursor: 'pointer', width: 'auto' }}>Download</button>
                           {canDelete && (
                             <button onClick={() => handleDeleteFile(showFilesModal.id, f.key, f.label)} style={{ padding: '6px 14px', background: '#e53e3e', color: 'white', borderRadius: '6px', border: 'none', fontSize: '12px', fontWeight: 600, cursor: 'pointer', width: 'auto' }}>Delete</button>
                           )}

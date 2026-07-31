@@ -8,7 +8,7 @@ const __dirname = path.dirname(__filename);
 
 // Ensure upload directories exist
 const uploadDir = path.join(__dirname, '../../uploads');
-const dirs = ['invoices', 'dc', 'po', 'testing-reports', 'disposal-docs', 'maintenance-reports'];
+const dirs = ['invoices', 'dc', 'po', 'testing-reports', 'disposal-docs', 'maintenance-reports', 'gateway-passes'];
 
 dirs.forEach(dir => {
   const dirPath = path.join(uploadDir, dir);
@@ -27,6 +27,8 @@ const storage = multer.diskStorage({
     else if (file.fieldname === 'testing_report_file') folder = 'testing-reports';
     else if (file.fieldname === 'approval_document' || file.fieldname === 'disposal_certificate') folder = 'disposal-docs';
     else if (file.fieldname === 'maintenance_report_file') folder = 'maintenance-reports';
+    else if (file.fieldname === 'signed_copy') folder = 'gateway-passes';
+    else if (file.fieldname === 'file') folder = 'invoices'; // Excel import file - temp storage not needed but multer requires a dest
     
     cb(null, path.join(uploadDir, folder));
   },
@@ -86,6 +88,46 @@ export const disposalFileUpload = upload.fields([
 
 export const maintenanceFileUpload = upload.fields([
   { name: 'maintenance_report_file', maxCount: 1 }
+]);
+
+// Mixed upload: Excel file in memory + invoice/po files on disk
+const mixedStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    if (file.fieldname === 'invoice_file') cb(null, path.join(uploadDir, 'invoices'));
+    else if (file.fieldname === 'po_file') cb(null, path.join(uploadDir, 'po'));
+    else cb(null, path.join(uploadDir, 'invoices')); // fallback
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname);
+    const name = path.basename(file.originalname, ext).replace(/[^a-zA-Z0-9]/g, '_');
+    cb(null, `${name}-${uniqueSuffix}${ext}`);
+  }
+});
+
+export const bulkImportUpload = multer({
+  storage: multer.memoryStorage(), // Excel always in memory
+  limits: { fileSize: 20 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (file.fieldname === 'file') {
+      const allowed = /csv|xls|xlsx/;
+      if (allowed.test(path.extname(file.originalname).toLowerCase())) cb(null, true);
+      else cb(new Error('Only Excel (.xlsx, .xls) and CSV files are allowed for import'));
+    } else {
+      // invoice_file and po_file
+      const allowed = /jpeg|jpg|png|pdf/;
+      if (allowed.test(path.extname(file.originalname).toLowerCase())) cb(null, true);
+      else cb(new Error('Only images and PDFs allowed for invoice/PO'));
+    }
+  }
+}).fields([
+  { name: 'file', maxCount: 1 },
+  { name: 'invoice_file', maxCount: 1 },
+  { name: 'po_file', maxCount: 1 }
+]);
+
+export const gatewayPassFileUpload = upload.fields([
+  { name: 'signed_copy', maxCount: 1 }
 ]);
 
 // Helper to get file paths from request

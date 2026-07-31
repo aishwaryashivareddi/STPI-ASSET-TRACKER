@@ -47,6 +47,9 @@ const GatewayPass = sequelize.define('GatewayPass', {
   received_by_person: {
     type: DataTypes.STRING(100)
   },
+  signed_copy: {
+    type: DataTypes.STRING(500)
+  },
   created_by: {
     type: DataTypes.INTEGER,
     references: { model: 'users', key: 'id' }

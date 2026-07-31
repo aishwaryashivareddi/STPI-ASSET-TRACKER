@@ -116,14 +116,8 @@ export const forgotPassword = catchAsync(async (req, res, next) => {
   });
 
   try {
-    if (process.env.SMTP_HOST && process.env.SMTP_USER) {
-      await sendPasswordResetEmail(email, resetToken);
-      ApiResponse.success(res, null, 'Password reset link sent to your email');
-    } else {
-      const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password?token=${resetToken}`;
-      console.log('Password Reset Link:', resetUrl);
-      ApiResponse.success(res, { resetUrl }, 'Password reset link sent (check console in dev mode)');
-    }
+    await sendPasswordResetEmail(email, resetToken);
+    ApiResponse.success(res, null, 'Password reset link sent to your email');
   } catch (error) {
     await user.update({ reset_token: null, reset_token_expiry: null });
     return next(new AppError('Failed to send email. Please try again later.', 500));

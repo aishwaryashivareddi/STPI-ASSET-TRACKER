@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { users, master } from './api';
+import { users as usersApi, master } from './api';
 import { useToast } from './components/Toast';
+import SearchableSelect from './components/SearchableSelect';
 
 export default function UserManagement() {
   const [list, setList] = useState([]);
@@ -14,45 +15,46 @@ export default function UserManagement() {
   const [newPassword, setNewPassword] = useState('');
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState('users'); // 'users' | 'pending' | 'rejected'
+  const [activeTab, setActiveTab] = useState('users');
+  const [showBranchForm, setShowBranchForm] = useState(false);
+  const [newBranch, setNewBranch] = useState({ name: '', code: '', address: '' });
+  const [formData, setFormData] = useState({ full_name: '', username: '', email: '', password: '', role: 'User', branch_id: '', department: '', is_active: true });
   const navigate = useNavigate();
   const toast = useToast();
-
-  const [formData, setFormData] = useState({ full_name: '', username: '', email: '', password: '', role: 'User', branch_id: '', department: '', is_active: true });
-
-  useEffect(() => {
-    const userData = JSON.parse(localStorage.getItem('user'));
-    if (!userData || userData.role !== 'Admin') { navigate('/dashboard'); return; }
-    setUser(userData);
-    loadData();
-  }, [navigate]);
 
   const loadData = async () => {
     setLoading(true);
     try {
       const [userRes, pendingRes, rejectedRes, branchRes] = await Promise.all([
-        users.getAll(), users.getPending(), users.getRejected(), master.getBranches()
+        usersApi.getAll(), usersApi.getPending(), usersApi.getRejected(), master.getBranches()
       ]);
       setList(userRes.data.data);
       setPendingList(pendingRes.data.data);
       setRejectedList(rejectedRes.data.data);
       setBranches(branchRes.data.data);
     } catch (err) {
-      console.error('Failed to load:', err);
+      console.error('Failed to load data:', err);
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    const userData = JSON.parse(localStorage.getItem('user'));
+    if (!userData || userData.role !== 'Admin') { navigate('/dashboard'); return; }
+    setUser(userData);
+    loadData();
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       if (editingUser) {
         const { password, ...updateData } = formData;
-        await users.update(editingUser.id, updateData);
+        await usersApi.update(editingUser.id, updateData);
         toast('User updated successfully');
       } else {
-        await users.create(formData);
+        await usersApi.create(formData);
         toast('User created successfully');
       }
       setShowForm(false);
@@ -70,10 +72,25 @@ export default function UserManagement() {
     setShowForm(true);
   };
 
+  const handleAddBranch = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await master.createBranch(newBranch);
+      const branchRes = await master.getBranches();
+      setBranches(branchRes.data.data);
+      setFormData(prev => ({ ...prev, branch_id: res.data.data.id }));
+      setShowBranchForm(false);
+      setNewBranch({ name: '', code: '', address: '' });
+      toast('Branch created successfully');
+    } catch (err) {
+      toast(err.response?.data?.message || 'Failed to create branch', 'error');
+    }
+  };
+
   const handleResetPassword = async () => {
     if (newPassword.length < 6) { toast('Password must be at least 6 characters', 'error'); return; }
     try {
-      await users.resetPassword(showResetModal, newPassword);
+      await usersApi.resetPassword(showResetModal, newPassword);
       toast('Password reset successfully');
       setShowResetModal(null);
       setNewPassword('');
@@ -84,7 +101,7 @@ export default function UserManagement() {
 
   const handleToggleActive = async (u) => {
     try {
-      await users.update(u.id, { ...u, is_active: !u.is_active });
+      await usersApi.update(u.id, { ...u, is_active: !u.is_active });
       toast(`User ${!u.is_active ? 'activated' : 'deactivated'}`);
       loadData();
     } catch (err) {
@@ -95,7 +112,7 @@ export default function UserManagement() {
   const handleDelete = async (u) => {
     if (!window.confirm(`Delete user "${u.username}"? This cannot be undone.`)) return;
     try {
-      await users.delete(u.id);
+      await usersApi.delete(u.id);
       toast('User deleted');
       loadData();
     } catch (err) {
@@ -105,7 +122,7 @@ export default function UserManagement() {
 
   const handleApprove = async (u) => {
     try {
-      await users.approve(u.id);
+      await usersApi.approve(u.id);
       toast(`${u.username} approved and activated`);
       loadData();
     } catch (err) {
@@ -116,7 +133,7 @@ export default function UserManagement() {
   const handleReject = async (u) => {
     if (!window.confirm(`Reject registration for "${u.username}"?`)) return;
     try {
-      await users.reject(u.id);
+      await usersApi.reject(u.id);
       toast(`${u.username} rejected`);
       loadData();
     } catch (err) {
@@ -134,7 +151,6 @@ export default function UserManagement() {
         </div>
       </header>
 
-      {/* Tabs */}
       <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
         <button onClick={() => setActiveTab('users')} style={{ padding: '10px 20px', borderRadius: '8px', border: 'none', cursor: 'pointer', fontWeight: 600, background: activeTab === 'users' ? 'linear-gradient(135deg, #667eea, #764ba2)' : '#e2e8f0', color: activeTab === 'users' ? 'white' : '#4a5568' }}>
           Active Users ({list.length})
@@ -193,13 +209,7 @@ export default function UserManagement() {
           <table>
             <thead>
               <tr>
-                <th>Full Name</th>
-                <th>Username</th>
-                <th>Email</th>
-                <th>Branch</th>
-                <th>Department</th>
-                <th>Rejected On</th>
-                <th>Actions</th>
+                <th>Full Name</th><th>Username</th><th>Email</th><th>Branch</th><th>Department</th><th>Rejected On</th><th>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -212,10 +222,8 @@ export default function UserManagement() {
                   <td>{u.email}</td>
                   <td>{u.branch?.name || '-'}</td>
                   <td>{u.department || '-'}</td>
-                  <td>{new Date(u.updatedAt).toLocaleDateString('en-IN')}</td>
-                  <td>
-                    <button onClick={() => handleDelete(u)} className="btn-sm btn-danger">Delete</button>
-                  </td>
+                  <td>{new Date(u.updated_at).toLocaleDateString('en-IN')}</td>
+                  <td><button onClick={() => handleDelete(u)} className="btn-sm btn-danger">Delete</button></td>
                 </tr>
               ))}
             </tbody>
@@ -224,13 +232,7 @@ export default function UserManagement() {
           <table>
             <thead>
               <tr>
-                <th>Full Name</th>
-                <th>Username</th>
-                <th>Email</th>
-                <th>Branch</th>
-                <th>Department</th>
-                <th>Requested On</th>
-                <th>Actions</th>
+                <th>Full Name</th><th>Username</th><th>Email</th><th>Branch</th><th>Department</th><th>Requested On</th><th>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -243,7 +245,7 @@ export default function UserManagement() {
                   <td>{u.email}</td>
                   <td>{u.branch?.name || '-'}</td>
                   <td>{u.department || '-'}</td>
-                  <td>{new Date(u.createdAt).toLocaleDateString('en-IN')}</td>
+                  <td>{new Date(u.created_at).toLocaleDateString('en-IN')}</td>
                   <td>
                     <button onClick={() => handleApprove(u)} className="btn-sm" style={{ marginRight: '4px', background: 'linear-gradient(135deg, #38a169, #276749)', color: 'white', border: 'none', borderRadius: '6px', padding: '6px 12px', cursor: 'pointer', fontWeight: 600 }}>✓ Approve</button>
                     <button onClick={() => handleReject(u)} className="btn-sm btn-danger">✗ Reject</button>
@@ -297,10 +299,14 @@ export default function UserManagement() {
                 </div>
                 <div className="form-group">
                   <label>Branch *</label>
-                  <select value={formData.branch_id} onChange={(e) => setFormData({ ...formData, branch_id: e.target.value })} required>
-                    <option value="">Select Branch</option>
-                    {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-                  </select>
+                  <SearchableSelect
+                    options={branches.map(b => ({ value: b.id, label: b.name }))}
+                    value={formData.branch_id}
+                    onChange={(v) => setFormData({ ...formData, branch_id: v })}
+                    placeholder="Select Branch"
+                    required
+                    extraOption={{ label: '+ Add New Branch', onClick: () => setShowBranchForm(true) }}
+                  />
                 </div>
               </div>
               <div className="form-actions">
@@ -324,6 +330,33 @@ export default function UserManagement() {
               <button type="button" onClick={() => { setShowResetModal(null); setNewPassword(''); }}>Cancel</button>
               <button onClick={handleResetPassword} className="btn-primary">Reset Password</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {showBranchForm && (
+        <div className="modal">
+          <div className="modal-content small">
+            <h2>Add New Branch</h2>
+            <form onSubmit={handleAddBranch}>
+              <div className="form-group">
+                <label>Branch Name *</label>
+                <input value={newBranch.name} onChange={(e) => setNewBranch({ ...newBranch, name: e.target.value })} placeholder="e.g., Hyderabad" required />
+              </div>
+              <div className="form-group">
+                <label>Branch Code *</label>
+                <input value={newBranch.code} onChange={(e) => setNewBranch({ ...newBranch, code: e.target.value.toUpperCase() })} placeholder="e.g., HYD" maxLength="3" required />
+                <div className="form-hint">3-character code for asset ID generation</div>
+              </div>
+              <div className="form-group">
+                <label>Address</label>
+                <textarea value={newBranch.address} onChange={(e) => setNewBranch({ ...newBranch, address: e.target.value })} rows="3" placeholder="Enter branch address" />
+              </div>
+              <div className="form-actions">
+                <button type="button" onClick={() => setShowBranchForm(false)}>Cancel</button>
+                <button type="submit" className="btn-primary">Add Branch</button>
+              </div>
+            </form>
           </div>
         </div>
       )}
